@@ -1,9 +1,11 @@
 import { randomUUID } from 'node:crypto'
-import { mkdir, readFile, writeFile, rename, cp, rm, lstat } from 'node:fs/promises'
+import { mkdir, readFile, writeFile, rename, rm, lstat } from 'node:fs/promises'
 import { join } from 'node:path'
 import { parse as parseYaml } from 'yaml'
 import { SkillName, SkillsStateSchema, type SkillsState, type InstalledSkill, type SkillCandidate, type SkillInspection, type SkillsRequest, type SkillsResponse } from '../../shared/skills.js'
 import { fetchSkillRepository, safeSkillPath, type SkillRepository } from './github.js'
+import { createSkillSnapshot, detectSnapshotLayout, type SnapshotLayout } from './snapshot.js'
+import { findUnknownSkillVariables, type SkillFile } from './variables.js'
 
 export function parseSkillMarkdown(markdown: string): { name: string; description: string } {
   const match = /^\uFEFF?---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(markdown)
@@ -19,10 +21,41 @@ export function parseSkillMarkdown(markdown: string): { name: string; descriptio
   return { name, description: meta.description.trim() }
 }
 
+async function inspectVariableWarnings(
+  repository: SkillRepository,
+  skillPath: string,
+  skillMarkdownPath: string,
+  skillMarkdown: Buffer,
+  inspectionWarnings: string[],
+): Promise<string[]> {
+  const files: SkillFile[] = []
+  let totalSize = 0
+  for (const file of repository.files) {
+    if (!file.path.endsWith('.md') || skillPath && !file.path.startsWith(`${skillPath}/`)) continue
+    const path = skillPath ? file.path.slice(skillPath.length + 1) : file.path
+    if (!safeSkillPath(file.path) || !['100644', '100755'].includes(file.mode)) {
+      inspectionWarnings.push(`${file.path}：檔案格式不支援，略過變數檢查`)
+      continue
+    }
+    if (totalSize + file.size > 10 * 1024 * 1024) {
+      inspectionWarnings.push(`${file.path}：超過 Skill 大小限制，略過變數檢查`)
+      continue
+    }
+    try {
+      const content = file.path === skillMarkdownPath ? skillMarkdown : await repository.read(file)
+      totalSize += content.byteLength
+      files.push({ path, content })
+    } catch {
+      inspectionWarnings.push(`${file.path}：讀取失敗，無法檢查未知變數`)
+    }
+  }
+  return findUnknownSkillVariables(files)
+}
+
 interface Preview { inspection: SkillInspection; repository: SkillRepository; createdAt: number }
 export interface SharedSkillsService {
   state(): SkillsState
-  runtime(): { roots: string[]; plugins: { type: 'local'; path: string }[] }
+  runtime(): { roots: string[]; plugins: { type: 'local'; path: string }[]; grokPluginDir?: string }
   handle(request: SkillsRequest): Promise<SkillsResponse>
   dispose(): Promise<void>
 }
@@ -32,9 +65,15 @@ export async function createSharedSkillsService(root: string, fetchRepository = 
   await mkdir(root, { recursive: true })
   const index = join(root, 'index.json')
   let state: SkillsState = { revision: null, skills: [] }
+  let snapshotLayout: SnapshotLayout = 'providers'
   try {
     state = SkillsStateSchema.parse(JSON.parse(await readFile(index, 'utf8')))
-    if (state.revision && !(await lstat(join(root, 'revisions', state.revision, 'skills'))).isDirectory()) throw new Error('共用 Skills 版本資料遺失')
+    if (state.revision) {
+      const revisionRoot = join(root, 'revisions', state.revision)
+      snapshotLayout = await detectSnapshotLayout(revisionRoot)
+      const skillRoot = snapshotLayout === 'legacy' ? join(revisionRoot, 'skills') : join(revisionRoot, 'codex', 'skills')
+      if (!(await lstat(skillRoot)).isDirectory()) throw new Error('共用 Skills 版本資料遺失')
+    }
   } catch (error) {
     if (!(error instanceof Error && 'code' in error && error.code === 'ENOENT')) throw error
     // An index that points to missing files must not silently become an empty catalog.
@@ -71,8 +110,11 @@ export async function createSharedSkillsService(root: string, fetchRepository = 
         const path = file.path === 'SKILL.md' ? '' : file.path.slice(0, -'/SKILL.md'.length)
         try {
           if (!safeSkillPath(file.path) || file.mode !== '100644' && file.mode !== '100755' || file.size > 256 * 1024) throw new Error('SKILL.md 必須是 256KB 內的一般檔案')
-          const markdown = (await repository.read(file)).toString('utf8')
-          candidates.push({ path, ...parseSkillMarkdown(markdown), markdown })
+          const markdownBytes = await repository.read(file)
+          const markdown = markdownBytes.toString('utf8')
+          const metadata = parseSkillMarkdown(markdown)
+          const variableWarnings = await inspectVariableWarnings(repository, path, file.path, markdownBytes, warnings)
+          candidates.push({ path, ...metadata, markdown, variableWarnings })
         } catch (error) { warnings.push(`${file.path}：${error instanceof Error ? error.message : '格式不支援'}`) }
       }
       const inspection: SkillInspection = { id: randomUUID(), url: repository.url, ref: repository.ref, commit: repository.commit, candidates, warnings }
@@ -85,16 +127,12 @@ export async function createSharedSkillsService(root: string, fetchRepository = 
     const target = join(root, 'revisions', revision)
     const temporaryIndex = join(root, `${revision}.json.tmp`)
     try {
-      await mkdir(join(target, 'skills'), { recursive: true })
-      await mkdir(join(target, '.claude-plugin'))
-      await writeFile(join(target, '.claude-plugin', 'plugin.json'), JSON.stringify({ name: 'yeschef-shared', description: 'YesChef 共用 Skills' }))
-      for (const skill of skills.filter(skill => skill.enabled)) {
-        await cp(join(root, 'packages', skill.id, skill.commit), join(target, 'skills', skill.name), { recursive: true, errorOnExist: true, force: false })
-      }
+      await createSkillSnapshot(root, revision, skills)
       const next = { revision, skills }
       await writeFile(temporaryIndex, JSON.stringify(next, null, 2), { mode: 0o600 })
       await rename(temporaryIndex, index)
       state = next
+      snapshotLayout = 'providers'
     } catch (error) {
       await rm(target, { recursive: true, force: true })
       await rm(temporaryIndex, { force: true })
@@ -163,7 +201,8 @@ export async function createSharedSkillsService(root: string, fetchRepository = 
     runtime: () => {
       if (!state.revision || !state.skills.some(skill => skill.enabled)) return { roots: [], plugins: [] }
       const path = join(root, 'revisions', state.revision)
-      return { roots: [join(path, 'skills')], plugins: [{ type: 'local', path }] }
+      if (snapshotLayout === 'legacy') return { roots: [join(path, 'skills')], plugins: [{ type: 'local', path }] }
+      return { roots: [join(path, 'codex', 'skills')], plugins: [{ type: 'local', path: join(path, 'claude') }], grokPluginDir: join(path, 'grok') }
     },
     handle: request => serialize(async () => {
       if (closed) return { kind: 'error', message: 'Skills 管理已關閉' }

@@ -29,6 +29,7 @@ const OPTIONS: readonly PermissionOption[] = [
 function setup(options: {
   commandExists?: boolean
   initialSessionId?: string
+  pluginDir?: string
   viewTools?: GrokViewTools
   bootError?: string
 } = {}) {
@@ -69,6 +70,7 @@ function setup(options: {
     onBusyChange: (next) => { busy.push(next) },
     commandExists: () => options.commandExists !== false,
     ...(options.initialSessionId === undefined ? {} : { initialSessionId: options.initialSessionId }),
+    ...(options.pluginDir === undefined ? {} : { pluginDir: options.pluginDir }),
     ...(options.viewTools === undefined ? {} : { viewTools: options.viewTools }),
     createClient: (clientDeps) => {
       captured = clientDeps
@@ -101,6 +103,14 @@ function fakeViewTools(order: string[]): GrokViewTools & { ask?: (a: ApprovalAsk
 }
 
 describe('送出與回合', () => {
+  it('建立 Grok client 時傳入共用 plugin 目錄', async () => {
+    const pluginDir = '/shared/revisions/r1/grok'
+    const r = setup({ pluginDir })
+    r.core.userInput('你好')
+    await flush()
+    expect(r.clientDeps().pluginDir).toBe(pluginDir)
+  })
+
   it('userInput 先畫 user-text,再開 client 並送 session/prompt', async () => {
     const r = setup()
     r.core.userInput('你好')

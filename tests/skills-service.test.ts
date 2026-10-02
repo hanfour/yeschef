@@ -49,12 +49,90 @@ it('installs selected skill resources, persists version and exposes a skills-onl
   const skill = service.state().skills[0]!
   expect(skill).toMatchObject({ name: 'design', commit: 'a'.repeat(40), enabled: true, source: { path: 'skills/design' } })
   const runtime = service.runtime()
+  const revisionRoot = join(root, 'revisions', service.state().revision!)
+  expect(runtime.roots).toEqual([join(revisionRoot, 'codex', 'skills')])
+  expect(runtime.plugins).toEqual([{ type: 'local', path: join(revisionRoot, 'claude') }])
+  expect(runtime.grokPluginDir).toBe(join(revisionRoot, 'grok'))
   expect(await readFile(join(runtime.roots[0]!, 'design/references/layout.md'), 'utf8')).toBe('Keep it readable')
+  expect(await readFile(join(runtime.plugins[0]!.path, 'skills/design/references/layout.md'), 'utf8')).toBe('Keep it readable')
+  expect(await readFile(join(runtime.grokPluginDir!, 'skills/design/references/layout.md'), 'utf8')).toBe('Keep it readable')
   expect(JSON.parse(await readFile(join(runtime.plugins[0]!.path, '.claude-plugin/plugin.json'), 'utf8'))).toEqual({ name: 'yeschef-shared', description: 'YesChef 共用 Skills' })
+  expect(JSON.parse(await readFile(join(runtime.grokPluginDir!, '.claude-plugin/plugin.json'), 'utf8'))).toEqual({ name: 'yeschef-shared', description: 'YesChef 共用 Skills' })
+  expect((await readdir(revisionRoot)).sort()).toEqual(['claude', 'codex', 'grok'])
   expect((await readdir(runtime.plugins[0]!.path)).sort()).toEqual(['.claude-plugin', 'skills'])
+  expect((await readdir(join(revisionRoot, 'codex'))).sort()).toEqual(['skills'])
+  expect((await readdir(runtime.grokPluginDir!)).sort()).toEqual(['.claude-plugin', 'skills'])
   const restored = await createSharedSkillsService(root); services.push(restored)
   expect(restored.state()).toEqual(service.state())
   expect(restored.runtime()).toEqual(runtime)
+})
+
+it('writes provider-specific markdown into immutable snapshots and leaves package sources unchanged', async () => {
+  const template = `${markdown()}\n{{provider}} {{skill_prefix}} {{shell_tool}} {{skill_dir}}`
+  const { root, service } = await setup(async () => repository({
+    'skills/design/SKILL.md': template,
+    'skills/design/references/guide.md': '{{provider}} {{skill_dir}}',
+    'skills/design/scripts/run.sh': '{{provider}}',
+  }))
+  await install(service)
+  const skill = service.state().skills[0]!
+  const revisionRoot = join(root, 'revisions', service.state().revision!)
+  const variants = [
+    ['claude', 'claude / Bash', 'claude'],
+    ['codex', 'codex $ shell', 'codex'],
+    ['grok', 'grok / run_terminal_command', 'grok'],
+  ] as const
+
+  for (const [provider, values, dirname] of variants) {
+    const skillDir = join(revisionRoot, dirname, 'skills', 'design')
+    const actual = await readFile(join(skillDir, 'SKILL.md'), 'utf8')
+    expect(actual).toContain(`${values} ${skillDir}`)
+    expect(await readFile(join(skillDir, 'references/guide.md'), 'utf8')).toBe(`${provider} ${skillDir}`)
+    expect(await readFile(join(skillDir, 'scripts/run.sh'), 'utf8')).toBe('{{provider}}')
+  }
+  expect(await readFile(join(root, 'packages', skill.id, skill.commit, 'SKILL.md'), 'utf8')).toBe(template)
+})
+
+it('preview reports unknown variables from markdown files by candidate', async () => {
+  const { service } = await setup(async () => repository({
+    'skills/design/SKILL.md': `${markdown()}\nUse {{tool_name}}.`,
+    'skills/design/references/tooling.md': 'Run {{shell_tool}} through {{shellTool}}.',
+    'skills/design/scripts/run.sh': 'Use {{not_a_variable}}.',
+  }))
+  const preview = await service.handle({ action: 'inspect', url: 'https://github.com/example/skills' })
+  if (preview.kind !== 'inspection') throw Error('expected inspection')
+  expect(preview.inspection.candidates[0]?.variableWarnings).toEqual([
+    'SKILL.md：未知變數 {{tool_name}}，安裝後會原樣保留',
+    'references/tooling.md：未知變數 {{shellTool}}，安裝後會原樣保留',
+  ])
+})
+
+it('uses legacy snapshot paths when the old root plugin directory exists', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'yeschef-legacy-skills-')); roots.push(root)
+  const revision = '20000000-0000-4000-8000-000000000002'
+  const revisionRoot = join(root, 'revisions', revision)
+  await mkdir(join(revisionRoot, '.claude-plugin'), { recursive: true })
+  await mkdir(join(revisionRoot, 'skills', 'design'), { recursive: true })
+  await writeFile(join(revisionRoot, '.claude-plugin', 'plugin.json'), '{}')
+  await writeFile(join(root, 'index.json'), JSON.stringify({
+    revision,
+    skills: [{
+      id: '10000000-0000-4000-8000-000000000001', name: 'design', description: 'Design interfaces',
+      source: { url: 'https://github.com/example/skills', ref: 'HEAD', path: 'skills/design' },
+      commit: 'a'.repeat(40), enabled: true, installedAt: '2026-10-02T00:00:00.000Z',
+    }],
+  }))
+  const service = await createSharedSkillsService(root); services.push(service)
+
+  expect(service.runtime()).toEqual({
+    roots: [join(revisionRoot, 'skills')],
+    plugins: [{ type: 'local', path: revisionRoot }],
+  })
+  const id = service.state().skills[0]!.id
+  expect(await service.handle({ action: 'enable', id, enabled: false })).toMatchObject({ kind: 'state' })
+  const nextRevision = join(root, 'revisions', service.state().revision!)
+  expect((await readdir(nextRevision)).sort()).toEqual(['claude', 'codex', 'grok'])
+  expect((await readdir(join(nextRevision, 'codex'))).sort()).toEqual(['skills'])
 })
 
 it('updates atomically while active snapshots retain the original version; disable/remove affect new sessions', async () => {

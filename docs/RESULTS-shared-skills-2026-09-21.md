@@ -53,3 +53,20 @@ YesChef 標題列已新增 Skills 管理入口，可貼 GitHub URL、讀取候�
 ## 尚未涵蓋
 
 私人 repository 認證、GitHub 以外來源、進行中對話熱替換、舊快照自動回收不在本輪。停用／移除僅作用於共用庫的新快照，不撤回已進入既有會話上下文的內容，也不管理使用者原有的個人／專案 skills。
+
+## 2026-10-02 共用 Skills provider 擴充
+
+新快照分成 `claude/`、`codex/`、`grok/`，Claude 與 Grok 各有 `.claude-plugin/plugin.json`，Codex 只包含 `skills/`。各執行者的 Markdown 依四個固定變數產生自己的內容，原始 package 維持不變。讀取舊格式快照時沿用根目錄 Claude plugin 與 `skills/` 路徑，該快照不提供 Grok plugin；下一次啟用、停用、安裝或移除會產生新格式。
+
+安裝預覽按 skill 列出未知變數警告，並顯示三個執行者的叫用方式。Grok 對話啟動時才加 `--plugin-dir`，未啟用共用 Skills 時不帶此參數。repo 內的 Grok 程式、測試 fixture 與既有 runtime 規格沒有提供終端工具名稱；`rg -n -i 'run_terminal_command|shell_tool|terminal command|terminal_command|plugin-dir|pluginDir' src tests docs/specs` 只找到新規格列出的 `run_terminal_command`，因此先採此值，待控制端實機確認。
+
+### 自動驗收
+
+- `npm run typecheck`：通過，`tsc --noEmit` 結束碼 0。
+- `npx vitest run --configLoader runner --exclude tests/chef-view-tools.test.ts --exclude tests/grok-view-tools.test.ts --exclude tests/terminal-server.test.ts --exclude tests/view-tools-http-server.test.ts`：181 個測試檔通過、1 個 skip；3174 個測試通過、1 個 skip，結束碼 0。
+- 一般 `npx vitest run` 因 `node_modules` symlink 無法建立 `node_modules/.vite-temp`，回報 `EPERM`。改用上述 `--configLoader runner` 後全套指定測試成功。
+- `git diff --check`：通過，沒有空白錯誤。
+
+### 待實機驗收
+
+本次環境不能啟動 Electron 或 Grok CLI，也不能執行 listen 型測試，未做 UI 操作或截圖。控制端仍需確認 Grok 的 `--plugin-dir` 實際載入、Grok 叫用寫法、`run_terminal_command` 工具名稱、使用者自己的 Grok skills 與 plugins 是否照常可用，以及三個執行者各重複兩次的共用 skill 載入與叫用流程。四個被排除的 listen 型測試為 `chef-view-tools`、`grok-view-tools`、`terminal-server` 與 `view-tools-http-server`。

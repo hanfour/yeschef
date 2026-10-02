@@ -3,6 +3,7 @@
 .skills-heading { position: sticky; top: 0; z-index: 1; background: var(--bg-window); padding: 24px 28px 20px; display: flex; align-items: flex-start; justify-content: space-between; border-bottom: 1px solid var(--separator); gap: 16px; }
 .skills-heading h1 { margin: 8px 0; font-size: var(--text-xl); letter-spacing: -0.035em; }
 .skills-heading p { margin: 0; font-size: var(--text-m); color: var(--label-2); line-height: 1.6; }
+.skills-heading .skills-provider-examples { margin-top: 6px; font-size: var(--text-s); overflow-wrap: anywhere; }
 .skills-body { padding: 24px 28px; }
 .skills-dialog h2 { margin: 0 0 12px; font-size: var(--text-l); font-weight: 600; }
 .skills-dialog h2 span { margin-left: 6px; color: var(--label-2); font-size: var(--text-m); }
@@ -30,6 +31,8 @@
 .skill-selection { display: flex; align-items: flex-start; gap: 12px; cursor: pointer; }
 .skills-dialog input[type=checkbox] { accent-color: var(--accent); margin: 2px 0 0; width: 16px; height: 16px; flex-shrink: 0; }
 .skill-description { display: block; color: var(--label-2); font-size: var(--text-m); line-height: 1.6; margin: 8px 0; overflow-wrap: anywhere; }
+.skill-providers { margin: 8px 0; font-size: var(--text-s); color: var(--label-2); }
+.skills-variable-warning { margin: 8px 0; color: var(--warning); font-size: var(--text-s); line-height: 1.5; overflow-wrap: anywhere; }
 .skills-dialog summary { color: var(--label-2); font-size: var(--text-s); cursor: pointer; margin-top: 8px; }
 .skills-dialog pre { max-height: 240px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--bg-content); padding: 12px; border-radius: var(--radius-m); font-size: var(--text-s); line-height: 1.6; }
 .skills-install-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 16px; font-size: var(--text-m); color: var(--label-2); }

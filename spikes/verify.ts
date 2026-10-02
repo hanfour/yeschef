@@ -33,6 +33,8 @@ const FLOWS: readonly FlowMeta[] = [
     description: '錯誤收集實機驗收：執行前需設定 TARGET_REPO、TARGET_GITHUB_REPO 與 TARGET_ENV_FILE，會用 claude 與 codex 額度' },
   { name: 'error-pull', scriptName: 'spike:error-pull', opensElectron: true, costsGrokQuota: false,
     description: '拉錯誤實機驗收：交給主廚的錯誤不是程式問題，主廚不開 PR 並寫回原因，會用 claude 與 codex 額度' },
+  { name: 'chef-ui-check', scriptName: 'spike:chef-ui-check', opensElectron: true, costsGrokQuota: false,
+    description: '主廚驗收介面檢查實機驗收：主廚在示範專案加一張單側粗框卡片，驗收階段要抓到並處理，會用 claude 與 codex 額度' },
   { name: 'grok', scriptName: 'spike:grok', opensElectron: false, costsGrokQuota: true,
     description: 'grok ACP 對話與 MCP 串接驗收,會用 grok.com 額度' },
   { name: 'screenshots', scriptName: 'spike:screenshots', opensElectron: true, costsGrokQuota: false,

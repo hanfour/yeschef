@@ -24,6 +24,18 @@
 .chef-attempts li > div { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; font-size: var(--text-s); }
 .chef-attempts p { font-size: var(--text-s); }
 .chef-attempts button { margin-left: 12px; }
+.chef-ui-check { min-width: 0; margin: 16px 0; padding-top: 16px; border-top: 1px solid var(--separator); }
+.chef-ui-check h3 { margin: 0 0 12px; font-size: var(--text-l); }
+.chef-ui-check h4 { margin: 16px 0 8px; font-size: var(--text-s); }
+.chef-ui-check-findings { display: grid; gap: 12px; list-style: none; padding: 0; margin: 0; }
+.chef-ui-check-findings li { min-width: 0; padding: 8px 0; border-bottom: 1px solid var(--separator); overflow-wrap: anywhere; }
+.chef-ui-check-heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; font-size: var(--text-s); }
+.chef-ui-check-heading span, .chef-ui-check-path, .chef-ui-check-reason { color: var(--label-2); font-size: var(--text-xs); }
+.chef-ui-check-findings p { margin: 6px 0; font-size: var(--text-s); }
+.chef-ui-check-path { display: block; overflow-wrap: anywhere; }
+.chef-ui-check-findings pre { max-width: 100%; margin: 6px 0; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--text-xs); }
+.chef-ui-check-findings pre code { font-family: var(--font-mono); }
+.chef-ui-check-findings p.chef-ui-check-reason { margin-bottom: 0; }
 .chef-resume { display: grid; gap: 12px; }
 .chef-worker-note { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 12px 16px; padding: 16px; border: 1px solid var(--separator); border-radius: var(--radius-m); color: var(--label-2); font-size: var(--text-s); }
 @media (max-width: 600px) { .chef-models { grid-template-columns: 1fr; } .chef-dialog .skills-heading { padding: 20px; } .chef-dialog h1 { font-size: var(--text-xl); } }

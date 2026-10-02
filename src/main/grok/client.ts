@@ -24,7 +24,17 @@ export interface GrokProcess {
   onExit(cb: (code: number | null) => void): void
 }
 
-export type SpawnGrok = (cwd: string, model?: string) => GrokProcess
+export type SpawnGrok = (cwd: string, model?: string, pluginDir?: string) => GrokProcess
+
+export function buildGrokArgs(model?: string, pluginDir?: string): string[] {
+  // --plugin-dir 是 `grok agent` 的選項，要放在 stdio 子指令前面；放在後面 grok 會以 code 2 結束。
+  return [
+    'agent',
+    ...(pluginDir === undefined ? [] : ['--plugin-dir', pluginDir]),
+    'stdio',
+    ...(model === undefined ? [] : ['--model', model]),
+  ]
+}
 
 export const MSG = {
   noGrok: 'PATH 找不到 grok,請先安裝',
@@ -77,6 +87,7 @@ export type PermissionOutcome =
 export interface GrokClientDeps {
   readonly cwd: string
   readonly mcpServers: readonly AcpMcpServer[]
+  readonly pluginDir?: string
   readonly model?: string
   /** 有給就用 `session/load` 續接,沒給就 `session/new`。 */
   readonly resume?: string
@@ -200,7 +211,7 @@ function readOptions(raw: unknown): readonly PermissionOption[] {
 export function createGrokClient(deps: GrokClientDeps): Promise<GrokClient> {
   const spawnGrok = deps.spawn ?? nodeSpawnGrok
   const killDelayMs = deps.killDelayMs ?? DEFAULT_KILL_DELAY_MS
-  const proc = spawnGrok(deps.cwd, deps.model)
+  const proc = spawnGrok(deps.cwd, deps.model, deps.pluginDir)
   trackGrokProcess(proc)
   const io: CodexIo = { write: (line) => { proc.write(line) }, onLine: (cb) => { proc.onLine(cb) } }
   const rpc = createRpc(io, deps.logError, deps.requestTimeoutMs, 'grok')
@@ -359,8 +370,8 @@ export function createGrokClient(deps: GrokClientDeps): Promise<GrokClient> {
 }
 
 /** 真的起一個 `grok agent stdio`。沒有單元測試,行為靠 spike 與實機驗收(規格 §11)。 */
-export const nodeSpawnGrok: SpawnGrok = (cwd, model) => {
-  const args = ['agent', 'stdio', ...(model === undefined ? [] : ['--model', model])]
+export const nodeSpawnGrok: SpawnGrok = (cwd, model, pluginDir) => {
+  const args = buildGrokArgs(model, pluginDir)
   const child = nodeSpawn('grok', args, { cwd, stdio: ['pipe', 'pipe', 'pipe'] })
   let closed = false
   let report: (error: Error) => void = () => {}

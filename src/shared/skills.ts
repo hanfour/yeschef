@@ -7,7 +7,9 @@ export const InstalledSkillSchema = z.object({
   commit: z.string().regex(/^[a-f0-9]{40,64}$/), enabled: z.boolean(), installedAt: z.string(),
 })
 export const SkillsStateSchema = z.object({ revision: z.string().uuid().nullable(), skills: z.array(InstalledSkillSchema) })
-export const SkillCandidateSchema = z.object({ path: z.string(), name: SkillName, description: z.string(), markdown: z.string() })
+export const SkillCandidateSchema = z.object({
+  path: z.string(), name: SkillName, description: z.string(), markdown: z.string(), variableWarnings: z.array(z.string()),
+})
 export const SkillInspectionSchema = z.object({
   id: z.string().uuid(), url: z.string(), ref: z.string(), commit: z.string(),
   candidates: z.array(SkillCandidateSchema), warnings: z.array(z.string()),

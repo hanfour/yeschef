@@ -14,10 +14,10 @@ const { flowCommand, listFlows, parseArgs } = await import('../spikes/verify.js'
 const { readFileSync } = await import('node:fs')
 const mockedReadFileSync = vi.mocked(readFileSync)
 
-const FLOW_NAMES = ['browser', 'group', 'error-intake', 'error-pull', 'grok', 'screenshots', 'contrast', 'sessions', 'memory'] as const
+const FLOW_NAMES = ['browser', 'group', 'error-intake', 'error-pull', 'chef-ui-check', 'grok', 'screenshots', 'contrast', 'sessions', 'memory'] as const
 
 describe('listFlows', () => {
-  it('剛好九個穩定名字,順序與內容固定', () => {
+  it('剛好十個穩定名字,順序與內容固定', () => {
     expect(listFlows().map((f) => f.name)).toEqual([...FLOW_NAMES])
   })
 
@@ -53,9 +53,19 @@ describe('listFlows', () => {
     expect(flow?.description).toContain('codex')
   })
 
+  it('chef-ui-check 開 Electron 並說明會驗收示範專案的單側粗框與模型額度', () => {
+    const flow = listFlows().find((item) => item.name === 'chef-ui-check')
+    expect(flow?.opensElectron).toBe(true)
+    expect(flow?.costsGrokQuota).toBe(false)
+    expect(flow?.description).toContain('示範專案')
+    expect(flow?.description).toContain('單側粗框')
+    expect(flow?.description).toContain('claude')
+    expect(flow?.description).toContain('codex')
+  })
+
   it('browser、group、error-intake、error-pull、screenshots、sessions 會開 Electron 視窗;contrast、grok、memory 不會', () => {
     const opens = listFlows().filter((f) => f.opensElectron).map((f) => f.name).sort()
-    expect(opens).toEqual(['browser', 'error-intake', 'error-pull', 'group', 'screenshots', 'sessions'])
+    expect(opens).toEqual(['browser', 'chef-ui-check', 'error-intake', 'error-pull', 'group', 'screenshots', 'sessions'])
   })
 })
 
@@ -67,6 +77,7 @@ describe('flowCommand', () => {
   it('每個穩定名字都能在 package.json 裡找到對應的 spike:* script,字串完全相同', () => {
     const pairs: readonly (readonly [typeof FLOW_NAMES[number], string])[] = [
       ['browser', 'spike:acceptance'], ['group', 'spike:group'], ['error-intake', 'spike:error-intake'], ['error-pull', 'spike:error-pull'], ['grok', 'spike:grok'], ['screenshots', 'spike:screenshots'],
+      ['chef-ui-check', 'spike:chef-ui-check'],
       ['contrast', 'spike:contrast'], ['sessions', 'spike:sessions'], ['memory', 'spike:memory'],
     ]
     for (const [name, scriptName] of pairs) {

@@ -70,7 +70,8 @@ export function SkillsManager({ api, onClose }: { api: Pick<YesChefApi, 'manageS
   return <dialog ref={dialogRef} className="skills-dialog" aria-labelledby="skills-title" onCancel={event => { event.preventDefault(); onClose() }}>
     <header className="skills-heading">
       <div><h1 id="skills-title">Skills</h1>
-        <p>安裝一次，所有專案的 Codex 與 Claude 都能使用。</p></div>
+        <p>啟用的 Skills 會提供給 Claude、Codex、Grok。</p>
+        <p className="skills-provider-examples">叫用方式：Claude <code>{'/yeschef-shared:<name>'}</code> · Codex <code>{'$<name>'}</code> · Grok <code>{'/yeschef-shared:<name>'}</code></p></div>
       <button className="skills-close" type="button" aria-label="關閉 Skills 管理" onClick={onClose}>×</button>
     </header>
     <div className="skills-body">
@@ -99,6 +100,8 @@ export function SkillsManager({ api, onClose }: { api: Pick<YesChefApi, 'manageS
           <label className="skill-selection"><input type="checkbox" checked={selected.includes(candidate.path)} disabled={Boolean(busy)}
             onChange={event => setSelected(items => event.target.checked ? [...items, candidate.path] : items.filter(path => path !== candidate.path))} />
             <span><strong>{candidate.name}</strong><span className="skill-description">{candidate.description}</span></span></label>
+          <p className="skill-providers">將提供給 Claude、Codex、Grok</p>
+          {candidate.variableWarnings.map(warning => <p className="skills-variable-warning" role="note" key={warning}>{warning}</p>)}
           <details><summary>查看 SKILL.md</summary><pre>{candidate.markdown}</pre></details>
         </li>)}</ul>
         {inspection.candidates.length > 0 && <div className="skills-install-row"><span>已選 {selected.length} 項</span>
@@ -116,6 +119,7 @@ export function SkillsManager({ api, onClose }: { api: Pick<YesChefApi, 'manageS
         <ul className="skills-installed">{state.skills.map(skill => <li key={skill.id}>
           <div className="skill-card-heading"><h3>{skill.name}</h3><span className={skill.enabled ? 'skill-enabled' : 'skill-disabled'}>{skill.enabled ? '已啟用 · 新對話可用' : '已停用'}</span></div>
           <p className="skill-description">{skill.description}</p>
+          <p className="skill-providers">{skill.enabled ? '執行者：Claude、Codex、Grok' : '啟用後提供給：Claude、Codex、Grok'}</p>
           <p className="skills-source">{skill.source.url} · {skill.source.path || '/'}<br />版本 <code title={skill.commit}>{skill.commit.slice(0, 8)}</code> · {skill.source.ref}</p>
           <p className="skills-hint">對話中可指定 <code>yeschef-shared:{skill.name}</code></p>
           <div className="skill-actions">

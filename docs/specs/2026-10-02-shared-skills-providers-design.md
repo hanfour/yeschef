@@ -15,18 +15,17 @@
 
 ## 2. Grok 怎麼接
 
-Grok 支援用設定檔的 `[skills] paths` 掃描額外目錄，也支援用 `GROK_CONFIG` 環境變數傳入只對這次啟動生效的設定（疊加在 `~/.grok/config.toml` 之上，不寫入檔案）。YesChef 啟動 Grok 對話時，在環境變數加上：
+`grok agent` 有 `--plugin-dir <DIR>` 參數：只對這次啟動載入一個 plugin 目錄，不寫入任何設定檔。Grok 接受與 Claude 相同的 plugin 格式（`.claude-plugin/plugin.json` 加 `skills/`），以 `grok plugin validate` 實測通過（grok 1.0.46）。YesChef 啟動 Grok 對話時加上：
 
 ```
-GROK_CONFIG={"skills":{"paths":["<revisions/<rev>/grok/skills>"]}}
+--plugin-dir <revisions/<rev>/grok>
 ```
 
-不改使用者的 `~/.grok/config.toml`。
+不改使用者的 `~/.grok/config.toml`，使用者自己的 Grok skills 與 plugins 照常載入。
 
-待實測（實作第一步）：`GROK_CONFIG` 的陣列是與使用者原本的 `skills.paths` 合併，還是取代。
+已排除的做法：`GROK_CONFIG`／`GROK_CONFIG_PATH` 疊加 `{"skills":{"paths":[...]}}`。實測（以暫時 HOME 執行 `grok inspect`）Grok 會列出這個設定來源，但不會從中讀取 skills 路徑，skill 不會被找到。
 
-- 合併：直接用上面的寫法。
-- 取代：啟動前讀 `~/.grok/config.toml` 的 `skills.paths`，把使用者原本的路徑與 YesChef 的路徑一起放進去，避免使用者自己的 Skills 在 YesChef 裡消失。讀不到或格式不對時，只放 YesChef 的路徑，並在 log 記一筆。
+實機確認（2026-10-02，grok 1.0.46）：`/yeschef-shared:<name>` 與 `/<name>` 都能叫用，畫面採用前者；Grok 的終端工具名稱為 `run_terminal_command`。
 
 這一步完成前，畫面上的說明維持「Codex 與 Claude」；完成後改成三個執行者。
 
@@ -41,7 +40,7 @@ SKILL.md 與 skill 目錄內的其他 `.md` 檔可以使用以下變數，其他
 | `{{shell_tool}}` | `Bash` | `shell` | `run_terminal_command` |
 | `{{skill_dir}}` | 該執行者那份 skill 目錄的絕對路徑 | 同左 | 同左 |
 
-`{{shell_tool}}` 的 Grok 名稱以實作時查到的實際工具名稱為準。
+`{{shell_tool}}` 的 Grok 值 `run_terminal_command` 已實機確認。
 
 規則：
 
@@ -66,10 +65,11 @@ revisions/<rev>/
   claude/.claude-plugin/plugin.json
   claude/skills/<name>/...
   codex/skills/<name>/...
+  grok/.claude-plugin/plugin.json
   grok/skills/<name>/...
 ```
 
-- Claude 的 plugin 路徑改成 `revisions/<rev>/claude`，Codex 的 extraRoots 改成 `revisions/<rev>/codex/skills`，Grok 用 `revisions/<rev>/grok/skills`。
+- Claude 的 plugin 路徑改成 `revisions/<rev>/claude`，Codex 的 extraRoots 改成 `revisions/<rev>/codex/skills`，Grok 用 `--plugin-dir revisions/<rev>/grok`。
 - 快照仍然不可變：執行中的對話繼續用自己那份，與現在相同。
 - 舊格式的快照（沒有 `claude/` 子目錄）照常可用：讀取時判斷 `revisions/<rev>/.claude-plugin` 是否存在，存在就用舊路徑。下一次安裝、啟用或移除時會產生新格式的快照。
 
@@ -88,10 +88,10 @@ Skills 管理畫面：
 - 現有的 `index.json`、`packages/` 不變。
 - 舊快照照常可用（第 4 節）。
 - 既有 skill 沒用變數，產出的三份內容與原本相同。
-- 使用者自己的 Grok skills 不受影響（第 2 節）。
+- 使用者自己的 Grok skills 不受影響：只加啟動參數，不改設定檔（第 2 節）。
 
 ## 7. 驗收
 
-- 單元測試：變數替換（四個變數、未知變數保留並警告、非 `.md` 檔不替換）、新舊快照路徑判斷、Grok 環境變數的組成（合併與取代兩種情況）。
+- 單元測試：變數替換（四個變數、未知變數保留並警告、非 `.md` 檔不替換）、新舊快照路徑判斷、Grok 啟動參數包含 `--plugin-dir` 與正確的快照路徑。
 - 實機：安裝一個用到 `{{skill_prefix}}` 與 `{{shell_tool}}` 的測試 skill，分別在 Claude、Codex、Grok 對話裡請執行者列出可用的 skills 並叫用它，確認三者都收到、內容是各自的版本。各跑兩次。
-- 實機：在 `~/.grok/config.toml` 設定一個自己的 `skills.paths`，確認 YesChef 裡的 Grok 對話同時看得到使用者的與共用的 skills。
+- 實機：使用者自己的 Grok skills（`~/.grok/skills/` 或 config 的 `skills.paths`）在 YesChef 的 Grok 對話中仍然可用。

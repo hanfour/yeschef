@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
-  createGrokClient, killAllGrokProcesses, MSG, MSG_NO_GROK, withGrokAuthHint,
+  buildGrokArgs, createGrokClient, killAllGrokProcesses, MSG, MSG_NO_GROK, withGrokAuthHint,
   type AcpMcpServer, type GrokClientDeps, type GrokProcess, type PermissionOutcome, type PermissionRequest, type SpawnGrok,
 } from '../src/main/grok/client.js'
 
@@ -66,11 +66,11 @@ interface Fake {
   stderr(text: string): void
 }
 
-function makeSpawn(): { spawn: SpawnGrok; fake: () => Fake; args: Array<[string, string | undefined]> } {
-  const args: Array<[string, string | undefined]> = []
+function makeSpawn(): { spawn: SpawnGrok; fake: () => Fake; args: Array<[string, string | undefined, string | undefined]> } {
+  const args: Array<[string, string | undefined, string | undefined]> = []
   let current: Fake | null = null
-  const spawn: SpawnGrok = (cwd, model) => {
-    args.push([cwd, model])
+  const spawn: SpawnGrok = (cwd, model, pluginDir) => {
+    args.push([cwd, model, pluginDir])
     const sent: Array<Record<string, unknown>> = []
     const killed: string[] = []
     let onLine: (c: string) => void = () => {}
@@ -155,7 +155,7 @@ describe('啟動', () => {
     const r = setup()
     const init = await r.waitFor('initialize')
     expect(init['params']).toMatchObject({ protocolVersion: 1 })
-    expect(r.args[0]).toEqual(['/p/alpha', undefined])
+    expect(r.args[0]).toEqual(['/p/alpha', undefined, undefined])
     r.fake().reply('initialize', INITIALIZE_RESULT)
     const opened = await r.waitFor('session/new')
     expect(opened['params']).toEqual({ cwd: '/p/alpha', mcpServers: [MCP] })
@@ -206,7 +206,22 @@ describe('啟動', () => {
   it('有 model 時帶進 spawn', async () => {
     const r = setup({ model: 'grok-4-fast' })
     await r.boot()
-    expect(r.args[0]).toEqual(['/p/alpha', 'grok-4-fast'])
+    expect(r.args[0]).toEqual(['/p/alpha', 'grok-4-fast', undefined])
+  })
+
+  it('有共用 Skills 時把 pluginDir 帶進 spawn，CLI args 加上 --plugin-dir', async () => {
+    const pluginDir = '/shared/revisions/r1/grok'
+    const r = setup({ pluginDir })
+    await r.boot()
+
+    expect(r.args[0]).toEqual(['/p/alpha', undefined, pluginDir])
+    // grok 只在 `agent` 層接受 --plugin-dir，放到 stdio 後面會以 code 2 結束（實機確認）。
+    expect(buildGrokArgs(undefined, pluginDir)).toEqual(['agent', '--plugin-dir', pluginDir, 'stdio'])
+    expect(buildGrokArgs('grok-4', pluginDir)).toEqual(['agent', '--plugin-dir', pluginDir, 'stdio', '--model', 'grok-4'])
+  })
+
+  it('沒有共用 Skills 時 CLI args 不包含 --plugin-dir', () => {
+    expect(buildGrokArgs()).toEqual(['agent', 'stdio'])
   })
 
   it('resume 走 session/load,參數帶 sessionId、cwd 與 mcpServers', async () => {

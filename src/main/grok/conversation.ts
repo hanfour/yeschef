@@ -56,6 +56,7 @@ export interface GrokViewTools {
 
 export interface GrokConversationDeps {
   readonly model?: string
+  readonly pluginDir?: string
   readonly onEvents?: (events: readonly Event[]) => void
   readonly onActivity?: (sessionId: string, events: readonly Event[]) => void
   /** 有給才把右窗格工具交給 grok(規格 §6)。沒給就是這個對話不能開瀏覽器。 */
@@ -294,6 +295,7 @@ export function createGrokConversation(deps: GrokConversationDeps): Conversation
       mcpServers,
       logError: deps.logError,
       ...(deps.model === undefined ? {} : { model: deps.model }),
+      ...(deps.pluginDir === undefined ? {} : { pluginDir: deps.pluginDir }),
       ...(resume === undefined ? {} : { resume }),
       onUpdate: (method, params) => {
         if (gen !== generation || disposed) return

@@ -88,15 +88,15 @@ describe('契約 §11.1：mcpServers 只在給了的時候出現', () => {
 })
 
 it('all project factories use the shared plugin snapshot without enabling user permission settings', () => {
-  let plugins: { type: 'local'; path: string }[] = [{ type: 'local', path: '/app/skills/revision-a' }]
+  let plugins: { type: 'local'; path: string }[] = [{ type: 'local', path: '/app/skills/revision-a/claude' }]
   const one = createSessionOptionsFactory(projectDir, appDir, storeReturning(undefined), undefined, undefined, () => plugins)
   const two = createSessionOptionsFactory(otherDir, appDir, storeReturning(undefined), undefined, undefined, () => plugins)
   const activeOptions = one()
   expect(activeOptions.plugins).toEqual(two().plugins)
   expect(activeOptions.permissionMode).toBe('default')
   expect(activeOptions.settingSources).toEqual(['project', 'local'])
-  plugins = [{ type: 'local', path: '/app/skills/revision-b' }]
+  plugins = [{ type: 'local', path: '/app/skills/revision-b/claude' }]
   expect(one().plugins).toEqual(plugins)
   expect(two().plugins).toEqual(plugins)
-  expect(activeOptions.plugins).toEqual([{ type: 'local', path: '/app/skills/revision-a' }])
+  expect(activeOptions.plugins).toEqual([{ type: 'local', path: '/app/skills/revision-a/claude' }])
 })

@@ -113,6 +113,7 @@ export interface SessionSource {
 /** 每個專案一份的執行環境,由 index.ts 用該專案的 rootPath 與 view tools 組出來。 */
 export interface ProjectRuntime {
   readonly codexSkillRoots?: () => readonly string[]
+  readonly grokPluginDir?: () => string | undefined
   readonly sessionOptions: (resumeSessionId?: string) => SessionOptions
   readonly viewTools?: ViewToolHooks
   /** codex 對話用的右窗格工具(codex view tools 規格 §4.1)。Claude 那側走 sessionOptions 裡的 MCP server。 */
@@ -389,6 +390,7 @@ export function createIpcBridge(deps: IpcBridgeDeps): IpcBridge {
       : undefined
 
     const runtime = deps.runtimeFor(projectId, cwd, conversationId, provider)
+    const grokPluginDir = runtime.grokPluginDir?.()
 
     const makeClaude = (): Conversation => (deps.createConversation ?? defaultCreateConversation)({
       ...common,
@@ -426,6 +428,7 @@ export function createIpcBridge(deps: IpcBridgeDeps): IpcBridge {
       ...(managed ? { model: managed.model } : {}),
       onSessionStarted: (sessionId, startedCwd) => recordStarted('grok', conversationId, projectId, sessionId, startedCwd),
       cwd,
+      ...(grokPluginDir === undefined ? {} : { pluginDir: grokPluginDir }),
       ...(initialSessionId === undefined ? {} : { initialSessionId }),
       ...(runtime.grokViewTools === undefined ? {} : { viewTools: runtime.grokViewTools }),
     })

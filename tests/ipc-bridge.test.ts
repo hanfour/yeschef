@@ -166,6 +166,7 @@ function makeRig(initial: ProjectsState = EMPTY_PROJECTS_STATE, extra: Partial<I
       byOptions.set(sessionOptions, conversationId)
       return {
         sessionOptions,
+        grokPluginDir: () => '/app/shared-skills/revisions/r/grok',
         viewTools: {
           autoAllow: () => false,
           handoffDone: () => {},
@@ -1115,6 +1116,7 @@ describe('grok 分頁', () => {
     expect(rig.created).toContain('grok-a')
     const deps = rig.grokDeps.get('grok-a')
     expect(deps?.cwd).toBe('/private/tmp/alpha')
+    expect(deps?.pluginDir).toBe('/app/shared-skills/revisions/r/grok')
     expect(deps?.viewTools).toBeDefined()
   })
 
@@ -1135,7 +1137,7 @@ describe('grok 分頁', () => {
     const loadClaudeActivity = vi.fn(async () => ({ groups: [], warnings: [] }))
     const rig = makeRig(withGrokTab(), {
       loadClaudeActivity,
-      developmentDiff: { repositories, capture: async () => {}, read: async () => { throw Error('unused') } },
+      developmentDiff: { repositories, capture: async () => {}, changedFiles: async () => [], read: async () => { throw Error('unused') } },
     })
     rig.grokTags.set('/private/tmp/alpha', 'grok-a')
     rig.service.update((s) => focusTab(s, A, 'grok-tab', NOW + 3))
@@ -1824,7 +1826,7 @@ describe('對話工具的訊息路由', () => {
     const capture = vi.fn(() => new Promise<void>(resolve => { finish = resolve }))
     const rig = makeRig(twoProjects(), {
       attachments: { pick: async () => [], prepare: () => [], sent: () => {}, remove: async () => {} },
-      developmentDiff: { repositories: async () => ({ kind: 'repositories', repositories: [], warnings: [] }), capture, read: async () => { throw Error('unused') } },
+      developmentDiff: { repositories: async () => ({ kind: 'repositories', repositories: [], warnings: [] }), capture, changedFiles: async () => [], read: async () => { throw Error('unused') } },
     })
     const pending = rig.invoke(CONVERSATION_TOOLS_CHANNEL, { action: 'send', conversationId: 'tab-a', text: 'hello', attachments: [] })
     await tick(); rig.focus('tab-b'); finish()
@@ -1838,7 +1840,7 @@ describe('對話工具的訊息路由', () => {
     let finish!: () => void
     const rig = makeRig(twoProjects(), {
       attachments: { pick: async () => [], prepare: () => [], sent: () => {}, remove: async () => {} },
-      developmentDiff: { repositories: async () => ({ kind: 'repositories', repositories: [], warnings: [] }), capture: () => new Promise<void>(resolve => { finish = resolve }), read: async () => { throw Error('unused') } },
+      developmentDiff: { repositories: async () => ({ kind: 'repositories', repositories: [], warnings: [] }), capture: () => new Promise<void>(resolve => { finish = resolve }), changedFiles: async () => [], read: async () => { throw Error('unused') } },
     })
     const pending = rig.invoke(CONVERSATION_TOOLS_CHANNEL, { action: 'send', conversationId: 'tab-a', text: 'old draft', attachments: [] })
     await tick(); rig.fire(IPC.intentStartNew); finish()
@@ -1850,7 +1852,7 @@ describe('對話工具的訊息路由', () => {
 it('repo 清單只使用目前 session 及其 live 寫檔證據，不讀其他歷史對話', async () => {
   const repositories = vi.fn(async () => ({ kind: 'repositories' as const, repositories: [], warnings: [] }))
   const loadClaudeActivity = vi.fn(async () => ({ groups: [[{ kind: 'tool-use' as const, id: 'w', name: 'Write', input: { file_path: '/private/tmp/alpha/child/x' } }, { kind: 'tool-result' as const, id: 'w', isError: false, content: 'ok' }]], warnings: [] }))
-  const rig = makeRig(twoProjects(), { loadClaudeActivity, developmentDiff: { repositories, capture: async () => {}, read: async () => { throw Error('unused') } } })
+  const rig = makeRig(twoProjects(), { loadClaudeActivity, developmentDiff: { repositories, capture: async () => {}, changedFiles: async () => [], read: async () => { throw Error('unused') } } })
   vi.spyOn(rig.fake('tab-a').core, 'sessionState').mockReturnValue({ kind: 'viewing', sessionId: 'current' })
   await rig.invoke(CONVERSATION_TOOLS_CHANNEL, { action: 'repositories', conversationId: 'tab-a' })
   expect(loadClaudeActivity).toHaveBeenCalledExactlyOnceWith('current')
@@ -1859,7 +1861,7 @@ it('repo 清單只使用目前 session 及其 live 寫檔證據，不讀其他�
 it('等待工具歷史時切換 session，舊寫檔紀錄不能套到新對話', async () => {
   let finish!: (value: { groups: never[]; warnings: string[] }) => void
   const repositories = vi.fn(async () => ({ kind: 'repositories' as const, repositories: [], warnings: [] }))
-  const rig = makeRig(twoProjects(), { loadClaudeActivity: () => new Promise(resolve => { finish = resolve }), developmentDiff: { repositories, capture: async () => {}, read: async () => { throw Error('unused') } } })
+  const rig = makeRig(twoProjects(), { loadClaudeActivity: () => new Promise(resolve => { finish = resolve }), developmentDiff: { repositories, capture: async () => {}, changedFiles: async () => [], read: async () => { throw Error('unused') } } })
   const state = vi.spyOn(rig.fake('tab-a').core, 'sessionState').mockReturnValue({ kind: 'viewing', sessionId: 'old' })
   const pending = rig.invoke(CONVERSATION_TOOLS_CHANNEL, { action: 'repositories', conversationId: 'tab-a' })
   state.mockReturnValue({ kind: 'viewing', sessionId: 'new' }); finish({ groups: [], warnings: [] })

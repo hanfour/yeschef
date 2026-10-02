@@ -431,6 +431,7 @@ export async function createWindow(): Promise<BaseWindow> {
     return {
       sessionOptions,
       codexSkillRoots: () => sharedSkills?.runtime().roots ?? [],
+      grokPluginDir: () => sharedSkills?.runtime().grokPluginDir,
       viewTools: {
         autoAllow: (toolName) => viewToolPolicy(toolName) === 'allow',
         handoffDone: (toolUseId) => { tools()?.handoffDone(toolUseId) },
@@ -510,6 +511,7 @@ export async function createWindow(): Promise<BaseWindow> {
     rootOf: id => service.rootPathOf(id),
     busyIn: cwd => bridge?.hasBusyWork(cwd) ?? false,
     startWorker: request => bridge.startChefWorker(request),
+    readUiCheckFiles: (key, cwd) => developmentDiff.changedFiles(key, cwd),
     deadlineReviewer: createDeadlineReviewer(query, reviewDir),
     group: {
       write: input => { group?.write(input) },

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { YesChefApi } from '../../shared/ipc.js'
 import { PROVIDER_LABELS, type ProjectsView } from '../../shared/projects.js'
 import type { ChefTask, ChefPolicy, ChefModel, ChefRequest, ChefResponse } from '../../shared/chef.js'
+import { ChefUiCheck } from './ChefUiCheck.js'
 import './SkillsManager.css'
 import './ChefManager.css'
 const kindLabels: Record<string, string> = { analysis: '分析', code: '實作', test: '測試', docs: '文件', review: '驗收' }
@@ -74,6 +75,7 @@ export function ChefManager({ api, projects, selectedTaskId, onClose }: { api: P
         {task && <article className="chef-task-detail"><p role="status">{labels[task.status]} · {task.reason}</p>
           <ol className="chef-units">{task.units.map(unit => <li key={unit.id}><strong>{unit.title}</strong><span>{kindLabels[unit.kind]} · {unit.status === 'done' ? '已完成回合' : unit.status === 'queued' ? '待執行' : unit.status === 'running' ? '執行中' : '等待處理'}</span></li>)}</ol>
           <ol className="chef-attempts">{task.attempts.map(a => <li key={a.id}><div><strong>{a.provider} · {a.actualModel ?? a.model}</strong><span>{a.actualModel ? '實際模型' : '待實際模型回報'} · {a.awaitingApproval ? '等待批准' : attemptLabels[a.status]}</span></div><p>{a.reason}</p><small>{new Date(a.startedAt).toLocaleString()}{a.costUsd === undefined ? ' · 費用未回報' : ` · 已回報 US$${a.costUsd.toFixed(4)}`}</small><button type="button" disabled={!projects.projects.some(p => p.tabs.some(t => t.id === a.workerId))} onClick={() => { api.activateTab({ projectId: task.projectId, tabId: a.workerId }); onClose() }}>查看工作者</button></li>)}</ol>
+          <ChefUiCheck task={task} />
           {['queued','running','stopping'].includes(task.status) ? <button type="button" disabled={busy || task.status === 'stopping'} onClick={() => void run({ action: 'cancel', taskId: task.id })}>停止並保存進度</button> : null}
           {['blocked','cancelled'].includes(task.status) && <div className="chef-resume"><label className="chef-field">接續指示<textarea aria-label="接續指示" rows={2} value={message} onChange={e => setMessage(e.target.value)} placeholder="補充已處理的阻塞原因或新的限制。" /></label>{task.needsReconciliation && <label><input type="checkbox" checked={reconciled} onChange={e => setReconciled(e.target.checked)} />我已確認舊執行者停止，並核對檔案與外部操作結果。</label>}<p className="skills-hint">接續可增加最多 3 次執行，任務總上限 20 次；會先核對 checkpoint。</p><button type="button" disabled={busy || (task.needsReconciliation && !reconciled)} onClick={() => void run({ action: 'resume', taskId: task.id, reconciled, message })}>接續任務</button></div>}
         </article>}

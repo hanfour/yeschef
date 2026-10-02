@@ -8,7 +8,8 @@ beforeEach(() => { HTMLDialogElement.prototype.showModal = function () { this.op
 afterEach(cleanup)
 const id = '10000000-0000-4000-8000-000000000001'
 const inspection: SkillInspection = { id, url: 'https://github.com/a/b', ref: 'HEAD', commit: 'a'.repeat(40), warnings: [],
-  candidates: [{ path: 'skills/design', name: 'design', description: 'Design interfaces', markdown: '---\nname: design\n---\n<script>bad()</script>' }] }
+  candidates: [{ path: 'skills/design', name: 'design', description: 'Design interfaces', markdown: '---\nname: design\n---\n<script>bad()</script>',
+    variableWarnings: ['references/tooling.md：未知變數 {{shellTool}}，安裝後會原樣保留'] }] }
 const installed: SkillsState = { revision: id, skills: [{ id, name: 'design', description: 'Design interfaces', source: { url: inspection.url, ref: 'HEAD', path: 'skills/design' }, commit: inspection.commit, enabled: true, installedAt: '2026-09-21' }] }
 const empty: SkillsResponse = { kind: 'state', state: { revision: null, skills: [] } }
 
@@ -17,11 +18,17 @@ it('inspects without installing, requires selection, and shows installed source/
   const { container } = render(<SkillsManager api={{ manageSkills }} onClose={() => {}} />)
   await screen.findByText('共用庫還沒有 skills。貼上 GitHub 網址開始加入。')
   expect(screen.getByRole('heading', { name: 'Skills' })).toBeTruthy()
-  expect(screen.getByText('安裝一次，所有專案的 Codex 與 Claude 都能使用。')).toBeTruthy()
+  expect(screen.getByText('啟用的 Skills 會提供給 Claude、Codex、Grok。')).toBeTruthy()
+  const examples = container.querySelector('.skills-provider-examples')?.textContent ?? ''
+  expect(examples).toContain('Claude /yeschef-shared:<name>')
+  expect(examples).toContain('Codex $<name>')
+  expect(examples).toContain('Grok /yeschef-shared:<name>')
   expect(screen.queryByText('YESCHEF · 共用能力')).toBeNull()
   fireEvent.change(screen.getByLabelText('公開 repository 網址'), { target: { value: inspection.url } })
   fireEvent.click(screen.getByRole('button', { name: '讀取 Skills' }))
   await screen.findByText('Design interfaces')
+  expect(screen.getByText('將提供給 Claude、Codex、Grok')).toBeTruthy()
+  expect(screen.getByText('references/tooling.md：未知變數 {{shellTool}}，安裝後會原樣保留')).toBeTruthy()
   expect(manageSkills.mock.calls.some(([request]) => request.action === 'install')).toBe(false)
   expect((screen.getByRole('button', { name: '安裝／更新選取項目' }) as HTMLButtonElement).disabled).toBe(true)
   fireEvent.click(screen.getByRole('checkbox'))
@@ -29,6 +36,7 @@ it('inspects without installing, requires selection, and shows installed source/
   fireEvent.click(screen.getByRole('button', { name: '安裝／更新選取項目' }))
   await screen.findByText('安裝完成，所有專案的新對話可使用')
   expect(screen.getByText('已啟用 · 新對話可用')).not.toBeNull()
+  expect(screen.getByText('執行者：Claude、Codex、Grok')).toBeTruthy()
   expect(manageSkills).toHaveBeenCalledWith({ action: 'install', inspectionId: id, paths: ['skills/design'] })
 })
 

@@ -36,6 +36,23 @@ it('對話基準排除開始前的 dirty 內容，涵蓋後續已 commit 與未�
   const reload = createDevelopmentDiff(join(r.root, 'baselines'))
   expect((await reload.read('conversation', r.repo, 'conversation')).files).toEqual(changes.files)
 })
+
+it('changedFiles 只回傳基準後新增或修改的介面副檔名', async () => {
+  const r = await rig(), key = 'chef:ui-check'
+  await writeFile(join(r.repo, 'kept.css'), '.kept { color: red; }\n')
+  await writeFile(join(r.repo, 'removed.scss'), '.removed { color: red; }\n')
+  await r.service.capture(key, r.repo)
+  await writeFile(join(r.repo, 'kept.css'), '.kept { color: blue; }\n')
+  await writeFile(join(r.repo, 'new.tsx'), '<div className="card" />\n')
+  await r.git('add', 'new.tsx'); await r.git('commit', '-m', 'add component')
+  await writeFile(join(r.repo, 'notes.md'), 'not scanned\n')
+  await rm(join(r.repo, 'removed.scss'))
+
+  expect(await r.service.changedFiles(key, r.repo)).toEqual([
+    { path: 'kept.css', text: '.kept { color: blue; }\n' },
+    { path: 'new.tsx', text: '<div className="card" />\n' },
+  ])
+})
 it('尚無基準顯示明確錯誤，但仍能查看未提交檔案；二進位不假裝文字', async () => {
   const r = await rig(); await writeFile(join(r.repo, 'photo.png'), Buffer.from([0,1,2,3]))
   await expect(r.service.read('missing', r.repo, 'conversation')).rejects.toThrow('尚無開發基準')

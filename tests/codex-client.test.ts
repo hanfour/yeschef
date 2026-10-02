@@ -449,10 +449,10 @@ describe('dynamic tools', () => {
 
 it('registers shared skill roots before creating or resuming a thread', async () => {
   for (const thread of [undefined, 'existing']) {
-    const s = setup({ skillRoots: ['/app/shared-skills/revisions/r/skills'] })
+    const s = setup({ skillRoots: ['/app/shared-skills/revisions/r/codex/skills'] })
     const started = s.client.start(thread)
     await s.replyInitialize()
-    expect(await s.paramsOf('skills/extraRoots/set')).toEqual({ extraRoots: ['/app/shared-skills/revisions/r/skills'] })
+    expect(await s.paramsOf('skills/extraRoots/set')).toEqual({ extraRoots: ['/app/shared-skills/revisions/r/codex/skills'] })
     expect(s.fake().sent.some(item => item.method === 'thread/start' || item.method === 'thread/resume')).toBe(false)
     s.fake().reply('skills/extraRoots/set', {})
     await s.finishStart(started)

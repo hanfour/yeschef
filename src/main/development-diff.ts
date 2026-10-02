@@ -112,6 +112,27 @@ function createSingleRepositoryDiff(dir: string) {
       void task.catch(() => { captures.delete(key) })
       return task
     },
+    async changedFiles(key: string, cwd: string): Promise<DevelopmentFile[]> {
+      const root = await rootOf(cwd), snapshot = await load(key, root)
+      if (!snapshot) throw Error('此對話尚無開發基準')
+      const names = [...new Set([...await files(root, snapshot.head), ...Object.keys(snapshot.dirty)])]
+        .filter((path) => /\.(css|scss|tsx|jsx|vue|svelte|html)$/i.test(path))
+        .sort()
+      if (names.length > COUNT_LIMIT) throw Error('介面檔案變更超過 200 個，無法完整掃描')
+      const changed: DevelopmentFile[] = []
+      let size = 0
+      for (const path of names) {
+        const before = Object.hasOwn(snapshot.dirty, path) ? snapshot.dirty[path]! : await committed(root, snapshot.head, path)
+        const current = await version(root, path)
+        const same = before.data === current.data && before.mode === current.mode && before.fingerprint === current.fingerprint
+        if (same || current.data === null || current.omitted || current.binary || current.mode === 0o120000) continue
+        const bytes = Buffer.from(current.data, 'base64')
+        size += bytes.length
+        if (size > TOTAL_LIMIT) throw Error('介面檔案內容超過 4 MiB，無法完整掃描')
+        changed.push({ path, text: bytes.toString('utf8') })
+      }
+      return changed
+    },
     async read(key: string, cwd: string, scope: 'conversation' | 'working' | 'base', baseRef?: string): Promise<DiffResult> {
       const root = await rootOf(cwd)
       const snapshot = scope === 'conversation' ? await load(key, root) : null
@@ -141,6 +162,7 @@ function createSingleRepositoryDiff(dir: string) {
 
 
 interface Repository { id: string; label: string; root: string; primary: boolean }
+export interface DevelopmentFile { readonly path: string; readonly text: string }
 const digest = (value: string) => createHash('sha256').update(value).digest('hex')
 /** Bounded discovery; never traverse symlinks or dependency/output trees. */
 async function discover(cwd: string): Promise<{ repositories: Repository[]; warnings: string[] }> {
@@ -231,6 +253,19 @@ export function createDevelopmentDiff(dir: string) {
         if (Object.keys(errors).length) throw Error(`部分 repo 無法建立基準：${Object.keys(errors).map(r => basename(r)).join('、')}`)
       })()
       pending.set(key, next); void next.catch(() => { pending.delete(key) }); return next
+    },
+    async changedFiles(key: string, cwd: string): Promise<DevelopmentFile[]> {
+      const captured = await manifest(key)
+      if (!captured) throw Error('此對話尚無開發基準')
+      const found = await discover(cwd), changed: DevelopmentFile[] = []
+      for (const root of captured.roots) {
+        const repo = found.repositories.find((candidate) => candidate.root === root)
+        if (!repo) continue
+        if (captured.errors[root]) throw Error(`此 repo 未建立基準：${captured.errors[root]}`)
+        const files = await single.changedFiles(repoKey(key, repo), repo.root)
+        changed.push(...files.map((file) => ({ path: repo.primary ? file.path : `${repo.label}/${file.path}`, text: file.text })))
+      }
+      return changed.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0)
     },
     async read(key: string, cwd: string, scope: 'conversation' | 'working' | 'base', repositoryId?: string, baseRef?: string, changedPaths?: readonly string[]): Promise<DiffResult> {
       const found = await discover(cwd)
