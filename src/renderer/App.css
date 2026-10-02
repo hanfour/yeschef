@@ -1,0 +1,30 @@
+html, body, #root { height: 100%; margin: 0; }
+/* 規格 §4:視窗底透明,讓 vibrancy 的材質透出來;內容區自己鋪 --bg-content。 */
+html, body { background: transparent; }
+.app { display: flex; flex-direction: column; height: 100%; color: var(--label); background: transparent; font-family: var(--font-sans); font-size: var(--text-m); }
+.title-bar { display: flex; align-items: center; gap: 12px; flex: none; min-height: 52px; padding: 8px 16px 8px 84px; border-bottom: 1px solid var(--separator); background: transparent; }
+.app-brand { display: inline-flex; align-items: center; gap: 8px; font-size: var(--text-m); font-weight: 650; letter-spacing: -.035em; flex-shrink: 0; }
+.app-brand .ui-icon { color: var(--accent); }
+.title-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--label-2); font-size: var(--text-s); border-left: 1px solid var(--separator-strong); padding-left: 12px; }
+.panel-toggle { flex-shrink: 0; background: transparent; }
+/* 規格 §4:.workbench 也要透明,不然裡面的專案列、分頁列、側欄的 transparent 只會透出這一層的 --bg-window,材質透不進來。 */
+.workbench { display: flex; flex: 1 1 auto; min-height: 0; min-width: 0; background: transparent; }
+.main-column { display: flex; flex-direction: column; flex: 1 1 0; min-width: 0; }
+.placeholder { padding: 16px; color: var(--label-2); }
+.app.is-compact .panel-group { flex: 1 1 0; width: 100%; border-left: 0; }
+@media (max-width: 520px) {
+  .title-bar { padding-right: 12px; gap: 8px; }
+  .app-brand .brand-word { display: none; }
+  .title-text { padding-left: 8px; }
+  .panel-toggle .ui-icon { display: none; }
+  .panel-toggle.error-intake-trigger { box-sizing: border-box; width: 32px; min-width: 32px; padding: 0; justify-content: center; }
+  .panel-toggle.error-intake-trigger .ui-icon { display: block; }
+  .error-intake-trigger span { display: none; }
+}
+/* 錯誤邊界的備用畫面（components/ErrorBoundary.tsx）。最外層佔滿視窗；對話框那層浮在畫面中央，主畫面照常可用。 */
+.app-crash { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; height: 100%; padding: 32px; color: var(--label); background: var(--bg-window); text-align: center; }
+.app-crash h1 { margin: 0; font-size: var(--text-xl); }
+.app-crash p { margin: 0; max-width: 640px; color: var(--label-2); overflow-wrap: anywhere; }
+.dialog-crash { position: fixed; z-index: 100; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; gap: 12px; max-width: min(480px, calc(100vw - 32px)); padding: 20px; border: 1px solid var(--separator-strong); border-radius: var(--radius-m); color: var(--label); background: var(--bg-raised); box-shadow: 0 12px 32px var(--shadow); }
+.dialog-crash p { margin: 0; overflow-wrap: anywhere; }
+.dialog-crash button { align-self: flex-end; }

@@ -1,0 +1,21 @@
+/* request_handoff 的專用卡片（契約 §12），狀態樣式在此定義。 */
+.handoff-card {
+  margin: 8px 0;
+  padding: 16px;
+  border: 1px solid var(--separator-strong);
+  border-radius: var(--radius-m);
+  background: var(--bg-raised);
+  font-size: var(--text-m);
+  line-height: 1.6;
+}
+.handoff-card--pending { border-color: var(--info); background: color-mix(in srgb, var(--info) 12%, transparent); }
+.handoff-card--stale { border-color: var(--separator-strong); opacity: 0.75; }
+.handoff-card--done { border-color: var(--success); background: color-mix(in srgb, var(--success) 12%, transparent); }
+.handoff-card--error { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
+.handoff-card__title { margin: 0 0 8px; color: var(--info); font-size: var(--text-s); font-weight: 600; }
+.handoff-card__reason { margin: 0 0 6px; white-space: pre-wrap; word-break: break-word; }
+.handoff-card__elapsed { margin: 0 0 8px; font-size: var(--text-s); color: var(--label-2); }
+.handoff-card__result { margin: 0 0 8px; padding: 12px; max-height: 220px; overflow: auto; white-space: pre-wrap; word-break: break-word; background: var(--bg-content); border-radius: var(--radius-s); font-family: var(--font-mono); font-size: var(--text-xs); line-height: 1.6; }
+.handoff-card__button { padding: 4px 12px; border: 1px solid var(--info); border-radius: var(--radius-m); background: color-mix(in srgb, var(--info) 16%, transparent); color: var(--label); font: inherit; font-size: var(--text-s); cursor: pointer; transition: background-color 150ms ease-out, transform 100ms ease-out; }
+@media (hover: hover) and (pointer: fine) { .handoff-card__button:hover:not(:disabled) { background: color-mix(in srgb, var(--info) 26%, transparent); } }
+.handoff-card__button:disabled { cursor: default; }

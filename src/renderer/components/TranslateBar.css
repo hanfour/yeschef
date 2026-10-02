@@ -1,0 +1,17 @@
+.translate-bar { margin: 12px 0 16px; min-width: 0; }
+.translate-controls, .translate-languages { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: var(--text-s); }
+.translate-bar button {
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-s);
+  background: none;
+  color: var(--label-2);
+  font: inherit;
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+.translate-bar button:disabled { cursor: wait; }
+.translate-languages { margin-top: 6px; }
+.translate-result { margin-top: 12px; padding: 12px 16px; border: 1px solid var(--separator); border-radius: var(--radius-m); background: var(--bg-raised); overflow-wrap: anywhere; }
+.translate-label { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; color: var(--label-2); font-size: var(--text-xs); }
+.translate-error { margin-top: 6px; font-size: var(--text-s); overflow-wrap: anywhere; }

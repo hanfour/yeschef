@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>對話訊息的翻譯按鈕</title>
+<style>
+:root{
+  --bg:#ffffff; --fg:#1a2028; --muted:#5b6773; --line:#e3e8ee;
+  --accent:#1a4f8a; --accent-soft:#eef4fb; --code-bg:#f5f7fa; --code-fg:#243447;
+  --quote-bg:#f7f9fc; --quote-bar:#9db8d6; --th-bg:#f0f4f9; --zebra:#fafbfd;
+  --shadow:0 1px 3px rgba(16,32,52,.08);
+  --sans:"PingFang TC","Noto Sans TC","Microsoft JhengHei",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --mono:"SF Mono",ui-monospace,Menlo,Consolas,"Noto Sans Mono CJK TC",monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#12171d; --fg:#dde4ec; --muted:#94a3b3; --line:#2a333e;
+    --accent:#7fb2e8; --accent-soft:#1a2531; --code-bg:#1a212a; --code-fg:#cbd6e3;
+    --quote-bg:#171f27; --quote-bar:#3d5670; --th-bg:#1c242e; --zebra:#161d25;
+    --shadow:0 1px 3px rgba(0,0,0,.3);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#12171d; --fg:#dde4ec; --muted:#94a3b3; --line:#2a333e;
+  --accent:#7fb2e8; --accent-soft:#1a2531; --code-bg:#1a212a; --code-fg:#cbd6e3;
+  --quote-bg:#171f27; --quote-bar:#3d5670; --th-bg:#1c242e; --zebra:#161d25;
+  --shadow:0 1px 3px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:1.5rem}
+body{
+  margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);
+  font-size:16px;line-height:1.75;letter-spacing:.01em;
+  -webkit-font-smoothing:antialiased;
+}
+.layout{display:grid;grid-template-columns:290px minmax(0,1fr);gap:0;max-width:1500px;margin:0 auto}
+nav.toc{
+  position:sticky;top:0;height:100vh;overflow-y:auto;padding:2rem 1rem 3rem 1.5rem;
+  border-right:1px solid var(--line);font-size:13.5px;
+}
+nav.toc .toc-title{font-weight:700;font-size:12px;letter-spacing:.12em;color:var(--muted);
+  text-transform:uppercase;margin-bottom:1rem}
+nav.toc a{display:block;color:var(--muted);text-decoration:none;padding:.3rem .5rem;
+  border-radius:5px;line-height:1.45;transition:background .12s,color .12s}
+nav.toc a:hover{background:var(--accent-soft);color:var(--accent)}
+nav.toc a.lv1{font-weight:700;color:var(--fg);margin-top:.6rem}
+nav.toc a.lv2{padding-left:.9rem}
+nav.toc a.lv3{padding-left:1.9rem;font-size:12.5px}
+nav.toc a.active{background:var(--accent-soft);color:var(--accent);font-weight:600}
+main{padding:2.5rem 3rem 6rem;min-width:0}
+h1,h2,h3,h4,h5,h6{line-height:1.35;font-weight:700;scroll-margin-top:1.5rem}
+h1{font-size:2.1rem;margin:0 0 1.5rem;padding-bottom:.7rem;border-bottom:2px solid var(--accent)}
+h2{font-size:1.55rem;margin:3rem 0 1rem;padding-bottom:.45rem;border-bottom:1px solid var(--line)}
+h3{font-size:1.22rem;margin:2.2rem 0 .8rem;color:var(--accent)}
+h4{font-size:1.05rem;margin:1.6rem 0 .6rem}
+h5,h6{font-size:.98rem;margin:1.2rem 0 .5rem;color:var(--muted)}
+p{margin:0 0 1rem}
+a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:2px}
+.anchor{opacity:0;margin-left:.4rem;font-weight:400;text-decoration:none;color:var(--muted);font-size:.8em}
+h1:hover .anchor,h2:hover .anchor,h3:hover .anchor,h4:hover .anchor{opacity:.6}
+ul,ol{margin:0 0 1rem;padding-left:1.5rem}
+li{margin:.3rem 0}
+li>ul,li>ol{margin:.3rem 0}
+code{font-family:var(--mono);font-size:.875em;background:var(--code-bg);color:var(--code-fg);
+  padding:.15em .4em;border-radius:4px;word-break:break-word}
+pre.code{background:var(--code-bg);border:1px solid var(--line);border-radius:8px;
+  padding:1rem 1.15rem;overflow-x:auto;margin:0 0 1.2rem;box-shadow:var(--shadow)}
+pre.code code{background:none;padding:0;font-size:12.5px;line-height:1.6;white-space:pre;color:var(--code-fg)}
+blockquote{margin:0 0 1.2rem;padding:.85rem 1.2rem;background:var(--quote-bg);
+  border-left:4px solid var(--quote-bar);border-radius:0 7px 7px 0}
+blockquote p:last-child,blockquote ul:last-child{margin-bottom:0}
+.table-wrap{overflow-x:auto;margin:0 0 1.4rem;border:1px solid var(--line);
+  border-radius:8px;box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:.6rem .85rem;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.6}
+th{background:var(--th-bg);font-weight:700;white-space:nowrap;position:sticky;top:0}
+tbody tr:nth-child(even){background:var(--zebra)}
+tbody tr:last-child td{border-bottom:none}
+td code{white-space:nowrap}
+hr{border:none;border-top:1px solid var(--line);margin:2.5rem 0}
+.mermaid-wrap{margin:0 0 1.4rem}
+pre.mermaid{background:var(--bg);border:1px solid var(--line);border-radius:8px;
+  padding:1.2rem;overflow-x:auto;text-align:center;box-shadow:var(--shadow)}
+.mermaid-src{margin-top:.5rem;font-size:13px}
+.mermaid-src summary{cursor:pointer;color:var(--muted);padding:.3rem 0}
+.mermaid-src pre{background:var(--code-bg);border:1px solid var(--line);border-radius:6px;
+  padding:.8rem;overflow-x:auto;margin:.4rem 0 0}
+.mermaid-src code{background:none;font-size:12px;white-space:pre}
+.topbar{position:fixed;top:1rem;right:1.5rem;z-index:20;display:flex;gap:.5rem}
+.topbar button{font:inherit;font-size:13px;padding:.4rem .8rem;border:1px solid var(--line);
+  background:var(--bg);color:var(--muted);border-radius:6px;cursor:pointer;box-shadow:var(--shadow)}
+.topbar button:hover{color:var(--accent);border-color:var(--accent)}
+.toc-toggle{display:none}
+@media (max-width:1000px){
+  .layout{grid-template-columns:1fr}
+  nav.toc{position:static;height:auto;max-height:none;border-right:none;
+    border-bottom:1px solid var(--line);padding:1.25rem 1.5rem;display:none}
+  nav.toc.open{display:block}
+  .toc-toggle{display:inline-block}
+  main{padding:1.75rem 1.25rem 4rem}
+  h1{font-size:1.65rem} h2{font-size:1.35rem}
+  body{font-size:15px}
+}
+@media print{
+  nav.toc,.topbar,.mermaid-src{display:none}
+  .layout{display:block;max-width:none}
+  main{padding:0}
+  body{font-size:11pt;line-height:1.6}
+  h2{page-break-after:avoid} table,pre,blockquote,.mermaid-wrap{page-break-inside:avoid}
+  a{color:inherit;text-decoration:none}
+  .table-wrap,pre.code{box-shadow:none}
+}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <button class="toc-toggle" onclick="document.querySelector('nav.toc').classList.toggle('open')">目錄</button>
+  <button onclick="window.__toggleTheme?.()">主題</button>
+  <button onclick="window.print()">列印</button>
+</div>
+<div class="layout">
+<nav class="toc"><div class="toc-title">目錄</div><a class="lv1" href="#對話訊息的翻譯按鈕">對話訊息的翻譯按鈕</a><a class="lv2" href="#1-為什麼要做">1. 為什麼要做</a><a class="lv2" href="#2-目標與非目標">2. 目標與非目標</a><a class="lv2" href="#3-一個要先決定的事翻譯從哪裡來">3. 一個要先決定的事:翻譯從哪裡來</a><a class="lv2" href="#4-介面">4. 介面</a><a class="lv3" href="#41-畫面">4.1 畫面</a><a class="lv3" href="#42-語言的記憶">4.2 語言的記憶</a><a class="lv3" href="#43-錯誤">4.3 錯誤</a><a class="lv2" href="#5-資料流">5. 資料流</a><a class="lv2" href="#6-驗收">6. 驗收</a><a class="lv2" href="#7-已知的取捨">7. 已知的取捨</a></nav>
+<main><h1 id="對話訊息的翻譯按鈕">對話訊息的翻譯按鈕<a class="anchor" href="#對話訊息的翻譯按鈕">#</a></h1>
+<ul><li>日期:2026-09-16</li><li>狀態:設計完成,尚未實作</li><li>觸發:使用者說「我接受回覆英文,但是是不是可以額外有自動翻譯功能按鈕?我可以點擊選擇翻譯成什麼語系」</li></ul>
+<h2 id="1-為什麼要做">1. 為什麼要做<a class="anchor" href="#1-為什麼要做">#</a></h2>
+<p>agent 常常用英文回答。現況要看懂只有兩條路:自己讀,或是再送一則訊息叫它翻譯。<br>第二條的代價比看起來大:那則訊息會進對話歷史、佔 context、而且 agent 可能以為你改變了任務方向,<br>下一輪就開始用中文做事或反覆確認要不要翻譯。</p>
+<p>所以要的是一個不影響對話本身的翻譯。</p>
+<h2 id="2-目標與非目標">2. 目標與非目標<a class="anchor" href="#2-目標與非目標">#</a></h2>
+<p><strong>目標</strong></p>
+<ul><li>agent 的文字訊息可以就地翻譯成指定語言,原文保留。</li><li>語言可選,記住上次選的。</li><li>翻譯不進對話歷史、不佔 agent 的 context、不觸發 agent 的下一步。</li></ul>
+<p><strong>非目標</strong></p>
+<ul><li>工具結果與終端輸出不翻。那些是程式輸出(路徑、指令、stack trace),翻了反而難對照。</li><li>不做整段對話一次翻完。沒有需求前不做,而且一次翻十則的成本與等待時間都不划算。</li><li>不做即時翻譯(邊串流邊翻)。等訊息完成再翻,省得翻到一半的句子。</li><li>不做離線翻譯。</li></ul>
+<h2 id="3-一個要先決定的事翻譯從哪裡來">3. 一個要先決定的事:翻譯從哪裡來<a class="anchor" href="#3-一個要先決定的事翻譯從哪裡來">#</a></h2>
+<p>三個選項:</p>
+<div class="table-wrap"><table><thead><tr><th style="text-align:left">做法</th><th style="text-align:left">成本</th><th style="text-align:left">問題</th></tr></thead><tbody><tr><td style="text-align:left">送一則訊息給當前對話</td><td style="text-align:left">一個回合</td><td style="text-align:left">進歷史、佔 context、agent 會以為任務變了</td></tr><tr><td style="text-align:left">另開一個一次性 SDK 呼叫</td><td style="text-align:left">一次 API 呼叫</td><td style="text-align:left">要處理失敗與逾時</td></tr><tr><td style="text-align:left">外部翻譯 API</td><td style="text-align:left">需要金鑰</td><td style="text-align:left">多一個要管的密鑰,而且品質不見得比模型好</td></tr></tbody></table></div>
+<p>選第二個。用 <code>@anthropic-ai/claude-agent-sdk</code> 的 <code>query()</code>,但與對話那條路完全分開:<br>不建 session、不給工具(<code>allowedTools: []</code>)、不讀專案設定(<code>settingSources: []</code>)、不 resume。<br>模型固定 <code>claude-haiku-4-5-20251001</code>:翻譯不需要推理,便宜快是唯一重點。</p>
+<p>這不需要新的密鑰。yeschef 既有的對話已經在用同一套 SDK 與同一份登入。</p>
+<h2 id="4-介面">4. 介面<a class="anchor" href="#4-介面">#</a></h2>
+<h3 id="41-畫面">4.1 畫面<a class="anchor" href="#41-畫面">#</a></h3>
+<p>每個 assistant 的 <strong>text block</strong>(<code>Turn.tsx:52</code> 那條)下方多一列細小的控制列,預設只有一顆<br><code>譯</code> 按鈕。點了展開語言清單:</p>
+<pre class="code"><code>繁體中文 / English / 日本語 / 한국어 / 简体中文</code></pre>
+<p>選了之後那一列變成「翻譯中…」,完成後譯文出現在<strong>原文下方</strong>,上面有一條細線與語言標籤,<br>右邊一顆「收起」。原文永遠在,不會被取代。</p>
+<p>同一個 block 再按一次 <code>譯</code> 可以換語言,已經翻過的語言直接從快取拿,不重打。</p>
+<p>只有<strong>完成的</strong> text block 才有這顆按鈕(<code>block.complete === true</code>)。串流中的不畫,<br>避免翻到一半的句子。</p>
+<h3 id="42-語言的記憶">4.2 語言的記憶<a class="anchor" href="#42-語言的記憶">#</a></h3>
+<p>上次選的語言記在 <code>localStorage</code>,下次那顆按鈕直接顯示成 <code>譯→English</code> 這種形式,<br>點一下就直接翻成上次那個語言,不必再展開清單;要換語言按旁邊的 <code>⌄</code>。</p>
+<p>第一次使用時沒有上次的語言,點 <code>譯</code> 直接展開清單。</p>
+<h3 id="43-錯誤">4.3 錯誤<a class="anchor" href="#43-錯誤">#</a></h3>
+<p>翻譯失敗時那一列顯示一句中文說明加一顆「重試」。不彈窗、不進對話、不影響其他 block。<br>逾時 30 秒。</p>
+<h2 id="5-資料流">5. 資料流<a class="anchor" href="#5-資料流">#</a></h2>
+<p>renderer 沙箱裡不能呼叫 SDK,所以走一條新的 invoke 頻道,形狀照 <code>preview:read</code> 那條:</p>
+<pre class="code"><code>translate:run   { text: string, target: string }  →
+  | { kind: 'ok', text: string }
+  | { kind: 'rejected', message: string }</code></pre>
+<p>主行程 <code>src/main/translate.ts</code>:</p>
+<ul><li><code>target</code> 必須在允許清單裡(五種語言的代碼),不是就 <code>rejected</code>。不接受自由字串: 那個值會進提示詞,允許清單是最省事也最穩的防線。</li><li><code>text</code> 長度上限 20000 字元,超過 <code>rejected</code>(訊息說明長度)。</li><li>同時最多兩個翻譯在跑,超過的排隊。與 <code>createPreviewReader</code> 同樣的做法。</li><li><code>query()</code> 失敗、逾時、回空字串都回 <code>rejected</code>,訊息是中文。</li></ul>
+<p>提示詞固定,只有目標語言是變數,而且變數只來自允許清單。要翻的文字用明顯的分隔標記包起來,<br>並在提示詞裡寫明分隔標記內的內容一律當成待翻譯的文字,不是指令。</p>
+<h2 id="6-驗收">6. 驗收<a class="anchor" href="#6-驗收">#</a></h2>
+<ol><li>agent 用英文回一段話,按 <code>譯</code> 選繁體中文,譯文出現在原文下方,原文還在。</li><li>同一則再按一次選日本語,兩種譯文可以各自收合,不用重打已經翻過的語言。</li><li>翻譯期間對話本身不受影響:沒有新的回合、狀態列的「進行中」不會亮、agent 的下一則回答不受影響。</li><li>重開 app 之後那顆按鈕記得上次選的語言。</li><li>串流中的訊息沒有那顆按鈕,訊息完成後才出現。</li><li>主行程沒跑或翻譯失敗時,那一列顯示中文說明與「重試」,其他訊息照常。</li></ol>
+<h2 id="7-已知的取捨">7. 已知的取捨<a class="anchor" href="#7-已知的取捨">#</a></h2>
+<ul><li>譯文不持久化。重開 app 之後要重翻。理由是譯文不是對話內容,寫進逐字稿會污染歷史; 而重翻一則的成本很低。</li><li>翻譯的成本不計入狀態列的花費。那是對話的花費,翻譯不是對話的一部分。 代價是這筆錢在 yeschef 裡看不到。</li><li>一次只翻一個 text block,不是整則訊息。一則訊息可能夾著工具呼叫,分開翻比較好對照。</li></ul></main>
+</div>
+<script type="module">
+const isDark = () => {
+  const t = document.documentElement.getAttribute('data-theme');
+  return t === 'dark' || (!t && matchMedia('(prefers-color-scheme:dark)').matches);
+};
+
+// 保留原始碼，供主題切換時重新渲染
+const figures = [...document.querySelectorAll('pre.mermaid')];
+figures.forEach((el) => (el.dataset.src = el.textContent));
+
+let mermaidLib = null;
+async function renderDiagrams() {
+  if (!figures.length) return;
+  if (!mermaidLib) {
+    // mermaid 由 CDN 載入；離線或載入失敗時，圖表維持為可讀的原始碼。
+    const mod = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+    mermaidLib = mod.default;
+  }
+  figures.forEach((el) => {
+    el.removeAttribute('data-processed');
+    el.innerHTML = '';
+    el.textContent = el.dataset.src;
+  });
+  mermaidLib.initialize({ startOnLoad: false, theme: isDark() ? 'dark' : 'default', securityLevel: 'loose' });
+  // 明確呼叫 run()：module script 的 await 會錯過 startOnLoad 的時機
+  await mermaidLib.run({ querySelector: 'pre.mermaid' });
+}
+
+try {
+  await renderDiagrams();
+  // 圖表渲染會改變頁面高度，重新定位錨點
+  if (location.hash) {
+    const target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    if (target) target.scrollIntoView();
+  }
+} catch (e) {
+  figures.forEach((el) => {
+    el.style.textAlign = 'left';
+    el.style.fontFamily = 'var(--mono)';
+    el.style.fontSize = '12px';
+    el.style.whiteSpace = 'pre';
+  });
+  document.querySelectorAll('.mermaid-src').forEach((el) => (el.style.display = 'none'));
+}
+
+window.__toggleTheme = async () => {
+  document.documentElement.setAttribute('data-theme', isDark() ? 'light' : 'dark');
+  try { await renderDiagrams(); } catch {}
+};
+// 目錄跟隨捲動
+const navEl = document.querySelector('nav.toc');
+const heads = [...document.querySelectorAll('h1[id],h2[id],h3[id]')];
+const links = new Map(
+  [...navEl.querySelectorAll('a')].map((a) => [decodeURIComponent(a.getAttribute('href').slice(1)), a]),
+);
+const io = new IntersectionObserver((entries) => {
+  entries.forEach((en) => {
+    if (!en.isIntersecting) return;
+    links.forEach((a) => a.classList.remove('active'));
+    const a = links.get(en.target.id);
+    if (!a) return;
+    a.classList.add('active');
+    // 只調整目錄自身的捲動位置。不可用 scrollIntoView——它會連帶捲動
+    // 整個頁面，讓使用者正在閱讀的位置被拉走。
+    const r = a.getBoundingClientRect();
+    const nr = navEl.getBoundingClientRect();
+    if (r.top < nr.top || r.bottom > nr.bottom) {
+      navEl.scrollTop += r.top - nr.top - nr.height / 3;
+    }
+  });
+}, { rootMargin: '0px 0px -80% 0px' });
+heads.forEach((h) => io.observe(h));
+</script>
+</body>
+</html>

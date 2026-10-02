@@ -1,0 +1,89 @@
+.approval-card {
+  margin: 8px 0;
+  padding: 16px;
+  border: 1px solid var(--warning);
+  border-radius: var(--radius-m);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  font-size: var(--text-m);
+  line-height: 1.6;
+}
+
+.approval-card:focus {
+  outline: 2px solid var(--warning);
+  outline-offset: -1px;
+}
+
+.approval-card--unmatched {
+  border-color: var(--separator-strong);
+}
+
+.approval-card__notice {
+  margin: 0 0 6px;
+  color: var(--warning);
+  font-size: var(--text-s);
+  line-height: 1.6;
+}
+
+.approval-card__prompt {
+  margin: 0 0 8px;
+}
+
+.approval-card__tool {
+  margin: 0 0 4px;
+  font-weight: 600;
+}
+
+.approval-card__input {
+  margin: 8px 0 12px;
+  padding: 12px;
+  max-height: 220px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--bg-content);
+  border-radius: var(--radius-s);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 1.65;
+  color: var(--label-2);
+}
+
+/* 只調整卡片內按鈕的排版;顏色交給 theme.css 的預設按鈕樣式與「允許」按鈕的 .primary。 */
+.approval-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.approval-card__actions button {
+  padding: 4px 12px;
+  border-radius: var(--radius-m);
+  font-size: var(--text-s);
+}
+
+.approval-card__hint {
+  margin: 12px 0 0;
+  font-size: var(--text-xs);
+  color: var(--label-2);
+}
+
+/* 對話尾端那一串「未對應」的請求。 */
+.approval-tail {
+  flex: 0 1 auto;
+  max-height: 45%;
+  overflow-y: auto;
+  padding: 0 16px 12px;
+}
+
+.approval-origin {
+  padding: 0;
+  margin: 0 0 6px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: var(--text-s);
+  text-decoration: underline;
+  cursor: pointer;
+}

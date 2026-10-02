@@ -1,0 +1,10 @@
+.test-machines-list { list-style: none; margin: 0 0 24px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.test-machines-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-radius: var(--radius-m); background: var(--bg-raised); }
+.test-machines-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; min-width: 0; font-size: var(--text-m); color: var(--label-2); }
+.test-machines-url { font-family: var(--font-mono); font-size: var(--text-s); overflow-wrap: anywhere; }
+.test-machines-ok { color: var(--success); }
+.test-machines-missing { color: var(--warning); }
+.test-machines-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.test-machines-form { display: flex; flex-direction: column; gap: 12px; }
+.test-machines-form label { display: flex; flex-direction: column; gap: 4px; font-size: var(--text-s); color: var(--label-2); }
+.test-machines-error { margin: 0; font-size: var(--text-s); color: var(--danger); }

@@ -1,0 +1,6 @@
+.new-conversation-form { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 16px; flex: none; background: var(--bg-raised); border-bottom: 1px solid var(--separator-strong); font-size: var(--text-s); }
+.new-conversation-heading { width: 100%; font-size: var(--text-s); font-weight: 600; margin-bottom: 2px; }
+.new-conversation-form label { display: flex; align-items: center; gap: 6px; color: var(--label-2); }
+.new-conversation-form input:not([type=checkbox]) { min-width: 120px; flex: 1; }
+.new-conversation-form input:disabled { opacity: .35; }
+.new-conversation-form button[type=submit] { border-color: transparent; }

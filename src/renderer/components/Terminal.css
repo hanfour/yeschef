@@ -1,0 +1,5 @@
+/* 內距放在外層、底色跟 xterm 主題一致：xterm 貼著 host 左上角畫，FitAddon 又在右側預留捲軸寬度、
+   行列取整數，沒有內距時只有右邊和下方看得到空白。背景色由 Terminal.tsx 以 --terminal-bg 帶入。 */
+.terminal-wrap { position: relative; display: flex; flex: 1 1 auto; min-width: 0; min-height: 0; padding: 8px; background: var(--terminal-bg); }
+.terminal-host { flex: 1 1 auto; min-width: 0; min-height: 0; }
+.term-starting { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--label-2); background: var(--bg-content); }

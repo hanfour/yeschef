@@ -1,0 +1,17 @@
+.project-bar-wrap { flex: none; border-bottom: 1px solid var(--separator); }
+/* 分隔線畫在 .project-bar-wrap 上,這裡 43 + 1 = 44,跟右窗格 .panel-tabs 的 44 對齊。 */
+.project-bar { display: flex; align-items: center; gap: 8px; overflow-x: auto; padding: 0 12px; min-height: 43px; }
+.project-chip { display: inline-flex; align-items: center; gap: 8px; padding: 4px 4px 4px 8px; transition: background-color 150ms ease-out; border: 1px solid transparent; border-radius: var(--radius-m); color: var(--label-2); cursor: pointer; white-space: nowrap; max-width: 240px; flex: 0 0 auto; font-size: var(--text-s); }
+.project-chip > .ui-icon { width: 13px; height: 13px; color: var(--label-3); }
+.project-name { overflow: hidden; text-overflow: ellipsis; }
+.project-chip.on { color: var(--label); background: var(--accent-soft); border-color: var(--separator-strong); }
+.project-chip.on > .ui-icon { color: var(--accent); }
+.project-chip.unavailable .project-name { text-decoration: line-through; }
+.project-pending { color: var(--warning); font-size: var(--text-xs); }
+.project-browser { display: inline-flex; color: var(--info); }
+.project-browser .ui-icon { width: 12px; height: 12px; }
+.project-unavailable { color: var(--danger); font-weight: 600; }
+.project-remove { padding: 0; width: 20px; height: 20px; min-height: 0; border: 0; color: var(--label-2); background: transparent; cursor: pointer; font-size: var(--text-l); flex: none; }
+.project-add { margin-left: auto; padding: 0; width: 28px; height: 28px; background: transparent; border-style: dashed; flex-shrink: 0; font-size: var(--text-xl); }
+.project-error { margin: 0; padding: 4px 12px 8px; color: var(--danger); font-size: var(--text-s); overflow-wrap: anywhere; }
+@media (hover: hover) and (pointer: fine) { .project-chip:hover:not(.on) { background: var(--bg-hover); } }

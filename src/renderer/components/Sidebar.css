@@ -1,0 +1,4 @@
+/* 把手整個落在對話區那一側(margin-right 負值),不往側邊欄裡滲:
+   側邊欄最右邊那幾 px 是 Recents 的捲軸,蓋住的話捲軸會點不到。 */
+.sidebar-resizer { flex: 0 0 6px; margin-right: -6px; cursor: col-resize; z-index: 1; user-select: none; touch-action: none; transition: background-color 150ms ease-out; }
+@media (hover: hover) and (pointer: fine) { .sidebar-resizer:hover { background: var(--separator-strong); } }

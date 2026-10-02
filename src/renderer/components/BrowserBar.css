@@ -1,0 +1,13 @@
+/* 這一列必須跟左欄 .tab-strip 同高(44 的內容 + 自己那條 1px 分隔線),兩欄的橫線才對得齊。 */
+.browser-bar { display: flex; flex: none; align-items: flex-start; gap: 4px; min-height: 45px; padding: 8px 12px; border-bottom: 1px solid var(--separator); background: var(--bg-window); }
+.browser-bar-button { width: 28px; height: 28px; padding: 0; border-color: transparent; background: transparent; color: var(--label-2); }
+.browser-bar-field { flex: 1; min-width: 0; }
+/* 照 Safari:靜止時無邊框、文字置中;聚焦時換底色、加強調色外框、文字靠左。 */
+.browser-bar-input { width: 100%; height: 28px; padding: 0 12px; border: none; border-radius: var(--radius-m); background: var(--bg-raised); font-size: var(--text-s); text-align: center; }
+.browser-bar-input:focus { background: var(--bg-content); outline: 2px solid var(--accent); outline-offset: -1px; text-align: left; }
+.browser-bar-input[aria-invalid="true"] { border: 1px solid var(--danger); }
+.browser-bar-error { margin: 4px 2px 0; font-size: var(--text-xs); color: var(--danger); }
+
+.browser-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; height: 100%; padding: 24px; color: var(--label-2); font-size: var(--text-m); text-align: center; }
+.browser-empty p { margin: 0; }
+.browser-empty-url { color: var(--label); font-family: var(--font-mono); font-size: var(--text-s); overflow-wrap: anywhere; }

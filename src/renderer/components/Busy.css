@@ -1,0 +1,23 @@
+.tab-busy,
+.project-busy {
+  display: inline-block;
+  color: var(--success);
+  animation: busy-spin 2s linear infinite;
+}
+
+@keyframes busy-spin {
+  to { transform: rotate(360deg); }
+}
+
+.conversation-busy {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  margin: auto 16px 4px;
+  padding: 4px 12px;
+  color: var(--label-2);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+.conversation-busy::before { content: ''; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--success); margin-right: 2px; }

@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <title>click-counter</title>
+    <style>
+      body { margin: 0; display: grid; place-items: center; height: 100vh; font: 16px system-ui; }
+      #btn { width: 240px; height: 120px; font-size: 20px; }
+    </style>
+  </head>
+  <body>
+    <button id="btn">click me</button>
+    <script>
+      window.__clicks = 0
+      document.getElementById('btn').addEventListener('click', () => {
+        window.__clicks += 1
+      })
+    </script>
+  </body>
+</html>

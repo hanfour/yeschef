@@ -1,0 +1,53 @@
+.peer-question {
+  margin: 8px 0;
+  padding: 16px;
+  border: 1px solid var(--info);
+  border-radius: var(--radius-m);
+  background: color-mix(in srgb, var(--info) 12%, transparent);
+  font-size: var(--text-m);
+  line-height: 1.65;
+}
+
+.peer-question-head,
+.peer-question-status {
+  color: var(--label-2);
+  font-size: var(--text-xs);
+}
+
+.peer-question-text {
+  margin-top: 4px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.peer-question-status {
+  margin-top: 8px;
+}
+
+.peer-question-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.peer-question-actions button,
+.peer-question-draft {
+  padding: 4px 8px;
+  border-radius: var(--radius-s);
+  font: inherit;
+  font-size: var(--text-s);
+  color: inherit;
+}
+
+.peer-question-actions button {
+  cursor: pointer;
+}
+
+.peer-question-draft {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 80px;
+  margin-top: 8px;
+  resize: vertical;
+}

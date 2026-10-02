@@ -1,0 +1,5 @@
+/* 把手放在左欄內,避免原生瀏覽器 view 蓋住接收 pointerdown 的區域。 */
+.panel-divider { flex: 0 0 6px; margin-left: -6px; cursor: col-resize; z-index: 1; user-select: none; touch-action: none; background: var(--separator); transition: background-color 150ms ease-out; }
+/* setPointerCapture 期間指標仍在按下,:active 涵蓋拖曳中的視覺提示,不需額外 class。 */
+.panel-divider:active, .panel-divider:focus-visible { background: var(--accent); }
+@media (hover: hover) and (pointer: fine) { .panel-divider:hover { background: var(--accent); } }

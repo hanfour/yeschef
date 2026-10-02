@@ -1,0 +1,66 @@
+[
+  {
+    "round": 1,
+    "T1_hidden_on_to_off": {
+      "delta": 30,
+      "visibility": "hidden"
+    },
+    "T2_hidden_off_to_on": {
+      "delta": 3,
+      "visibility": "hidden"
+    },
+    "T3a_visible_on_minimize": {
+      "delta": 3,
+      "visibility": "hidden"
+    },
+    "T3b_minimized_on_to_off": {
+      "delta": 30,
+      "visibility": "hidden"
+    },
+    "T4_visible_off_minimize": {
+      "delta": 30,
+      "visibility": "visible"
+    },
+    "CDP_hidden_throttled_screenshot": {
+      "counterBefore": 4,
+      "counterAfter": 9,
+      "delta": 5,
+      "visibility": "hidden",
+      "shot1Bytes": 7511,
+      "shot2Bytes": 6286,
+      "screenshotsIdentical": false
+    }
+  },
+  {
+    "round": 2,
+    "T1_hidden_on_to_off": {
+      "delta": 30,
+      "visibility": "hidden"
+    },
+    "T2_hidden_off_to_on": {
+      "delta": 3,
+      "visibility": "hidden"
+    },
+    "T3a_visible_on_minimize": {
+      "delta": 3,
+      "visibility": "hidden"
+    },
+    "T3b_minimized_on_to_off": {
+      "delta": 30,
+      "visibility": "hidden"
+    },
+    "T4_visible_off_minimize": {
+      "delta": 30,
+      "visibility": "visible"
+    },
+    "CDP_hidden_throttled_screenshot": {
+      "counterBefore": 3,
+      "counterAfter": 8,
+      "delta": 5,
+      "visibility": "hidden",
+      "shot1Bytes": 7086,
+      "shot2Bytes": 7495,
+      "screenshotsIdentical": false
+    }
+  }
+]

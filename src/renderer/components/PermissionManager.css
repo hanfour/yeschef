@@ -1,0 +1,30 @@
+.permissions-dialog { width: min(900px, calc(100vw - 32px)); }
+.permissions-body { display: grid; gap: 20px; }
+.permissions-controls { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.permissions-controls label { display: flex; align-items: center; gap: 12px; }
+.permissions-controls select { max-width: 260px; }
+.permissions-body fieldset { border: 0; padding: 0; min-width: 0; display: grid; gap: 16px; }
+.permissions-body legend { font-weight: 650; margin-bottom: 12px; }
+.permissions-modes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.permissions-modes label { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 8px; border: 1px solid var(--separator); padding: 16px; border-radius: var(--radius-m); cursor: pointer; transition: background-color 150ms ease-out, border-color 150ms ease-out; }
+.permissions-modes label.is-selected { border-color: var(--accent); background: var(--accent-soft); }
+.permissions-modes span { grid-column: 1 / -1; font-size: var(--text-s); color: var(--label-2); }
+.permissions-options { display: flex; gap: 16px; flex-wrap: wrap; }
+.permissions-options label { display: flex; gap: 8px; align-items: center; }
+.permissions-field { display: grid; gap: 8px; }
+.permissions-field textarea { width: 100%; resize: vertical; min-height: 80px; }
+.permissions-field span { font-size: var(--text-s); color: var(--label-2); }
+.permissions-error { color: var(--danger); }
+.permissions-audit-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.permissions-export-path { color: var(--label-2); font-size: var(--text-s); overflow-wrap: anywhere; }
+.permissions-audit-counts { margin: 0; font-weight: 650; }
+.permissions-filter { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 12px; }
+.permissions-filter button { padding: 4px 10px; border: 1px solid var(--separator); border-radius: var(--radius-m); background: var(--bg-raised); color: var(--label); }
+.permissions-filter button.is-selected { border-color: var(--accent); background: var(--accent-soft); }
+.permissions-audit { list-style: none; margin: 0; padding: 0; max-height: min(360px, 45vh); overflow-y: auto; overscroll-behavior: contain; }
+.permissions-audit li { padding: 12px 0; border-bottom: 1px solid var(--separator); overflow-wrap: anywhere; }
+.permissions-audit li > div { display: flex; justify-content: space-between; gap: 12px; }
+.permissions-audit p { margin: 6px 0; }
+.permissions-audit small { color: var(--label-2); }
+.permissions-audit-summary-line { font-weight: 600; }
+@media (max-width: 600px) { .permissions-modes { grid-template-columns: 1fr; } .permissions-dialog .skills-heading { padding: 20px; } .permissions-dialog .skills-heading h1 { font-size: var(--text-xl); } }

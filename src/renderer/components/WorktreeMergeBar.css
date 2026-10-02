@@ -1,0 +1,51 @@
+.worktree-merge-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-m);
+  background: var(--bg-raised);
+}
+
+.worktree-merge-text {
+  margin: 0;
+  flex: 1;
+  min-width: 160px;
+  font-size: var(--text-s);
+  color: var(--label);
+  overflow-wrap: anywhere;
+}
+
+.worktree-merge-hint {
+  width: 100%;
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--label-2);
+}
+
+.worktree-merge-files {
+  width: 100%;
+  margin: 0;
+  padding-left: 20px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--label-2);
+  overflow-wrap: anywhere;
+}
+
+.worktree-merge-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.worktree-merge-bar.is-conflict {
+  border-color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+}
+
+.worktree-merge-bar.is-conflict .worktree-merge-text {
+  color: var(--warning);
+}

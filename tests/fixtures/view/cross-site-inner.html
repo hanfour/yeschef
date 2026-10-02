@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <title>跨站內層</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 0; padding: 53px 71px; }
+      #out { font-family: ui-monospace, Menlo, monospace; }
+    </style>
+  </head>
+  <body>
+    <button type="button" id="hit">內層按鈕</button>
+    <p id="out">未點擊</p>
+    <script>
+      document.getElementById('hit').addEventListener('click', (e) => {
+        document.getElementById('out').textContent = `已點擊 ${e.clientX},${e.clientY}`
+      })
+    </script>
+  </body>
+</html>

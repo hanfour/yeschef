@@ -1,0 +1,142 @@
+{
+  "nodes": [
+    {
+      "nodeId": "1",
+      "ignored": false,
+      "role": { "type": "internalRole", "value": "RootWebArea" },
+      "name": { "type": "computedString", "value": "訂單確認" },
+      "childIds": ["2", "3", "14", "16", "17"],
+      "backendDOMNodeId": 1,
+      "frameId": "FRAME-ROOT"
+    },
+    {
+      "nodeId": "16",
+      "ignored": false,
+      "role": { "type": "role", "value": "image" },
+      "name": { "type": "computedString", "value": "商品圖" },
+      "childIds": [],
+      "backendDOMNodeId": 116
+    },
+    {
+      "nodeId": "4",
+      "ignored": false,
+      "role": { "type": "role", "value": "textbox" },
+      "name": { "type": "computedString", "value": "電子郵件" },
+      "properties": [
+        { "name": "invalid", "value": { "type": "token", "value": "false" } },
+        { "name": "focusable", "value": { "type": "booleanOrUndefined", "value": true } },
+        { "name": "editable", "value": { "type": "token", "value": "plaintext" } },
+        { "name": "settable", "value": { "type": "booleanOrUndefined", "value": true } },
+        { "name": "multiline", "value": { "type": "boolean", "value": false } },
+        { "name": "readonly", "value": { "type": "booleanOrUndefined", "value": false } },
+        { "name": "required", "value": { "type": "booleanOrUndefined", "value": true } }
+      ],
+      "childIds": [],
+      "backendDOMNodeId": 104
+    },
+    {
+      "nodeId": "20",
+      "ignored": false,
+      "role": { "type": "internalRole", "value": "StaticText" },
+      "name": { "type": "computedString", "value": "訂單" },
+      "childIds": [],
+      "backendDOMNodeId": 102
+    },
+    {
+      "nodeId": "10",
+      "ignored": false,
+      "role": { "type": "role", "value": "button" },
+      "name": { "type": "computedString", "value": "刪除" },
+      "properties": [
+        { "name": "invalid", "value": { "type": "token", "value": "false" } },
+        { "name": "disabled", "value": { "type": "boolean", "value": true } }
+      ],
+      "childIds": [],
+      "backendDOMNodeId": 110
+    },
+    {
+      "nodeId": "3",
+      "ignored": false,
+      "role": { "type": "role", "value": "generic" },
+      "name": { "type": "computedString", "value": "" },
+      "childIds": ["4", "6", "8", "10", "12"],
+      "backendDOMNodeId": 103
+    },
+    {
+      "nodeId": "17",
+      "ignored": false,
+      "role": { "type": "role", "value": "image" },
+      "name": { "type": "computedString", "value": "" },
+      "childIds": [],
+      "backendDOMNodeId": 117
+    },
+    {
+      "nodeId": "8",
+      "ignored": false,
+      "role": { "type": "role", "value": "checkbox" },
+      "name": { "type": "computedString", "value": "訂閱電子報" },
+      "properties": [
+        { "name": "invalid", "value": { "type": "token", "value": "false" } },
+        { "name": "focusable", "value": { "type": "booleanOrUndefined", "value": true } },
+        { "name": "checked", "value": { "type": "tristate", "value": "true" } }
+      ],
+      "childIds": [],
+      "backendDOMNodeId": 108
+    },
+    {
+      "nodeId": "14",
+      "ignored": false,
+      "role": { "type": "role", "value": "link" },
+      "name": { "type": "computedString", "value": "說明" },
+      "properties": [
+        { "name": "focusable", "value": { "type": "booleanOrUndefined", "value": true } }
+      ],
+      "childIds": ["21"],
+      "backendDOMNodeId": 114
+    },
+    {
+      "nodeId": "6",
+      "ignored": false,
+      "role": { "type": "role", "value": "textbox" },
+      "name": { "type": "computedString", "value": "收件人" },
+      "value": { "type": "string", "value": "王小明" },
+      "properties": [
+        { "name": "invalid", "value": { "type": "token", "value": "false" } },
+        { "name": "focusable", "value": { "type": "booleanOrUndefined", "value": true } },
+        { "name": "editable", "value": { "type": "token", "value": "plaintext" } },
+        { "name": "settable", "value": { "type": "booleanOrUndefined", "value": true } },
+        { "name": "multiline", "value": { "type": "boolean", "value": false } },
+        { "name": "readonly", "value": { "type": "booleanOrUndefined", "value": false } },
+        { "name": "required", "value": { "type": "booleanOrUndefined", "value": false } }
+      ],
+      "childIds": [],
+      "backendDOMNodeId": 106
+    },
+    {
+      "nodeId": "21",
+      "ignored": false,
+      "role": { "type": "internalRole", "value": "StaticText" },
+      "name": { "type": "computedString", "value": "說明" },
+      "childIds": [],
+      "backendDOMNodeId": 115
+    },
+    {
+      "nodeId": "12",
+      "ignored": true,
+      "ignoredReasons": [{ "name": "notRendered", "value": { "type": "boolean", "value": true } }],
+      "role": { "type": "role", "value": "none" },
+      "name": { "type": "computedString", "value": "隱藏" },
+      "childIds": [],
+      "backendDOMNodeId": 112
+    },
+    {
+      "nodeId": "2",
+      "ignored": false,
+      "role": { "type": "role", "value": "heading" },
+      "name": { "type": "computedString", "value": "訂單" },
+      "properties": [{ "name": "level", "value": { "type": "integer", "value": 1 } }],
+      "childIds": ["20"],
+      "backendDOMNodeId": 101
+    }
+  ]
+}

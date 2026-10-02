@@ -1,0 +1,44 @@
+.skills-dialog { box-sizing: border-box; width: min(860px, calc(100vw - 32px)); max-height: calc(100vh - 48px); padding: 0; border: 0; border-radius: var(--radius-l); color: var(--label); background: var(--bg-window); box-shadow: 0 0 0 1px var(--separator), 0 20px 60px var(--shadow); font-family: var(--font-sans); }
+.skills-dialog::backdrop { background: var(--backdrop); }
+.skills-heading { position: sticky; top: 0; z-index: 1; background: var(--bg-window); padding: 24px 28px 20px; display: flex; align-items: flex-start; justify-content: space-between; border-bottom: 1px solid var(--separator); gap: 16px; }
+.skills-heading h1 { margin: 8px 0; font-size: var(--text-xl); letter-spacing: -0.035em; }
+.skills-heading p { margin: 0; font-size: var(--text-m); color: var(--label-2); line-height: 1.6; }
+.skills-body { padding: 24px 28px; }
+.skills-dialog h2 { margin: 0 0 12px; font-size: var(--text-l); font-weight: 600; }
+.skills-dialog h2 span { margin-left: 6px; color: var(--label-2); font-size: var(--text-m); }
+.skills-dialog h3 { margin: 0; font-size: var(--text-l); overflow-wrap: anywhere; }
+/* 規格 §3.3:對話框按鈕不用 22px,是 height: auto、padding: 8px 12px;圓角、邊框、字級、底色都交回 theme.css 跟其他按鈕一樣。 */
+.skills-dialog button { height: auto; padding: 8px 12px; }
+.skills-dialog button.primary { background: var(--accent); color: var(--accent-text); }
+.skills-dialog button:disabled { cursor: default; }
+.skills-dialog button.skills-close { font-size: var(--text-xl); line-height: 1; background: transparent; padding: 4px 8px; }
+.skills-dialog label { font-size: var(--text-m); }
+.skills-url-row { display: flex; gap: 12px; margin-top: 8px; }
+.skills-url-row input { min-width: 0; flex: 1; padding: 8px 12px; border: 1px solid var(--separator-strong); border-radius: var(--radius-m); font-size: var(--text-m); color: var(--label); background: var(--bg-content); }
+.skills-url-row button { flex-shrink: 0; }
+.skills-hint { font-size: var(--text-s); color: var(--label-2); line-height: 1.6; margin: 8px 0 16px; }
+.skills-feedback p { margin: 0 0 16px; font-size: var(--text-m); line-height: 1.6; }
+.skills-error { color: var(--danger); overflow-wrap: anywhere; font-size: var(--text-m); }
+.skills-results { border-radius: var(--radius-l); box-shadow: inset 0 0 0 1px var(--separator); padding: 16px; margin-bottom: 24px; background: var(--bg-raised); }
+.skills-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.skills-section-heading h2 { margin-bottom: 0; }
+.skills-source { color: var(--label-2); font-size: var(--text-s); line-height: 1.6; overflow-wrap: anywhere; }
+.skills-dialog code { font-family: var(--font-mono); font-size: var(--text-s); font-variant-numeric: tabular-nums; }
+.skills-candidates, .skills-installed { list-style: none; margin: 16px 0 0; padding: 0; }
+.skills-candidates { max-height: min(360px, 45vh); overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; }
+.skills-candidates li { padding: 16px 0; border-top: 1px solid var(--separator); }
+.skill-selection { display: flex; align-items: flex-start; gap: 12px; cursor: pointer; }
+.skills-dialog input[type=checkbox] { accent-color: var(--accent); margin: 2px 0 0; width: 16px; height: 16px; flex-shrink: 0; }
+.skill-description { display: block; color: var(--label-2); font-size: var(--text-m); line-height: 1.6; margin: 8px 0; overflow-wrap: anywhere; }
+.skills-dialog summary { color: var(--label-2); font-size: var(--text-s); cursor: pointer; margin-top: 8px; }
+.skills-dialog pre { max-height: 240px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--bg-content); padding: 12px; border-radius: var(--radius-m); font-size: var(--text-s); line-height: 1.6; }
+.skills-install-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 16px; font-size: var(--text-m); color: var(--label-2); }
+.skills-installed li { background: var(--bg-raised); border-radius: var(--radius-m); padding: 16px; margin-top: 12px; box-shadow: inset 0 0 0 1px var(--separator); }
+.skill-card-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.skill-enabled, .skill-disabled { font-size: var(--text-xs); border-radius: 999px; padding: 4px 8px; }
+.skill-enabled { color: var(--success); background: color-mix(in srgb, var(--success) 12%, transparent); }
+.skill-disabled { color: var(--label-2); background: var(--bg-hover); }
+.skill-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; font-size: var(--text-s); }
+.skill-actions label { display: flex; align-items: center; gap: 6px; margin-right: auto; }
+.skills-empty { border: 1px dashed var(--separator-strong); border-radius: var(--radius-m); padding: 24px 16px; color: var(--label-2); font-size: var(--text-m); line-height: 1.6; }
+@media (max-width: 520px) { .skills-heading, .skills-body { padding: 16px; } .skills-url-row { flex-direction: column; } .skills-results { padding: 12px; } }

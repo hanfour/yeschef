@@ -1,0 +1,23 @@
+.development-diff { height: 100%; overflow: auto; padding: 16px; background: var(--bg-content); color: var(--label); }
+.development-diff header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.development-diff h2 { font-size: var(--text-l); margin: 0 auto 0 0; }
+.development-diff select { min-width: 0; max-width: 100%; }
+.diff-baseline, .diff-warning { font-size: var(--text-xs); color: var(--label-2); overflow-wrap: anywhere; }
+.diff-error { color: var(--danger); overflow-wrap: anywhere; }
+.diff-empty { padding: 32px 0; color: var(--label-2); }
+.diff-files { display: flex; flex-direction: column; gap: 4px; max-height: 240px; overflow: auto; margin: 16px 0; }
+.diff-files button { text-align: left; justify-content: flex-start; overflow-wrap: anywhere; background: transparent; border-color: transparent; font-size: var(--text-s); }
+.diff-files button[aria-current=true] { background: var(--bg-raised); border-color: var(--separator); }
+.diff-files button span { color: var(--info); font-family: var(--font-mono); }
+.diff-code { border: 1px solid var(--separator); border-radius: var(--radius-m); overflow: hidden; }
+.diff-code h3 { font-size: var(--text-s); margin: 0; padding: 8px 12px; background: var(--bg-raised); overflow-wrap: anywhere; }
+/* 未標記(行號)的行用 --label-2 淡出,新增、刪除、hunk 各自的顏色蓋過它。 */
+.diff-code pre { font-family: var(--font-mono); font-size: var(--text-s); line-height: 1.7; color: var(--label-2); overflow-x: auto; margin: 0; padding: 12px 0; tab-size: 2; }
+.diff-code pre > span { display: block; width: max-content; min-width: 100%; padding: 0 12px; }
+.diff-add { background: color-mix(in srgb, var(--success) 12%, transparent); color: var(--success); }
+.diff-delete { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
+.diff-hunk { color: var(--info); background: color-mix(in srgb, var(--info) 12%, transparent); }
+.diff-base-form { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; padding: 12px 0; }
+.diff-base-form label { display: grid; gap: 6px; font-size: var(--text-s); flex: 1; min-width: 160px; }
+.diff-base-form input { width: 100%; }
+.diff-base-form p { width: 100%; margin: 0; color: var(--label-2); font-size: var(--text-xs); }

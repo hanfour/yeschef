@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <title>送出表單</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 0; padding: 80px 120px; }
+    </style>
+  </head>
+  <body>
+    <h1>送出表單</h1>
+    <!--
+      view_type 帶 submit: true 的驗收頁面（RESULTS-05 第 14 項）。
+      form.html 的 input 沒有包在 form 裡，按 Enter 不會送出，所以那一項驗不了。
+      這裡 method="get" 且 action 留空：送出後導回同一頁並帶上查詢字串，
+      網址會變，右窗格工具才回得出「網址變為 <url>」那一行。
+      單一 input 加一個 submit 按鈕，讓 Enter 的隱含送出在各瀏覽器都成立。
+    -->
+    <form method="get">
+      <label>收件人<input type="text" name="recipient" value="王小明" /></label>
+      <button type="submit">送出</button>
+    </form>
+  </body>
+</html>

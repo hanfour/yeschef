@@ -1,0 +1,8 @@
+.panel-group { display: flex; flex-direction: column; flex: 0 0 var(--panel-width, 50%); min-width: 0; border-left: 1px solid var(--separator); background: var(--bg-content); }
+.panel-tabs { display: flex; flex: none; gap: 4px; align-items: center; padding: 0 12px; min-height: 44px; overflow-x: auto; border-bottom: 1px solid var(--separator); background: var(--bg-window); }
+.panel-tab { padding: 4px 8px; border: 0; transition: background-color 150ms ease-out; border-radius: var(--radius-s); background: transparent; color: var(--label-2); font-size: var(--text-s); cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+.panel-tab.is-active { color: var(--label); background: var(--accent-soft); }
+.panel-preview-tab { display: flex; flex: 0 0 auto; align-items: center; min-width: 0; max-width: 260px; }
+.panel-preview-tab .panel-tab { overflow: hidden; text-overflow: ellipsis; display: block; min-width: 0; flex: 1; text-align: left; }
+.panel-tab-close { border: 0; background: transparent; color: var(--label-2); width: 20px; height: 20px; min-height: 0; padding: 0; font-size: var(--text-l); flex-shrink: 0; }
+.panel-body { flex: 1 1 0; min-height: 0; overflow: hidden; }

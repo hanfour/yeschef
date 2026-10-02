@@ -1,0 +1,9 @@
+.status-bar { display: flex; flex: none; align-items: center; gap: 16px; min-height: 28px; padding: 0 16px; border-top: 1px solid var(--separator); background: var(--bg-window); color: var(--label-2); font-size: var(--text-xs); overflow-x: auto; }
+.status-item { flex: none; white-space: nowrap; }
+.status-pending { color: var(--warning); }
+.status-idle { display: inline-flex; align-items: center; gap: 6px; color: var(--label-2); white-space: nowrap; }
+/* 綠色在這個 app 裡等於「執行中」(Busy.css),閒置改用中性的灰點。 */
+.status-idle::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--label-3); }
+.status-cost { margin-left: auto; font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--text-xs); }
+button.status-pending, button.status-busy { background: transparent; border: 0; font: inherit; padding: 0 4px; }
+button.status-busy { color: var(--label); }

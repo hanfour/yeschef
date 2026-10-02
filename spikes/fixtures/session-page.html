@@ -1,0 +1,13 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>session page</title>
+<body>
+<script>
+  // 固定的工作量:2000 個節點加一個 1MB 左右的陣列。每次量測用同一份,不連外部網站。
+  for (let i = 0; i < 2000; i++) {
+    const el = document.createElement('p')
+    el.textContent = `列 ${i} ` + 'x'.repeat(80)
+    document.body.append(el)
+  }
+  window.__keep = Array.from({ length: 131072 }, (_, i) => i * 1.5)
+</script>

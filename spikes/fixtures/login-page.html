@@ -1,0 +1,27 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>驗收用登入頁</title>
+<body>
+<h1>驗收用登入頁</h1>
+<!-- 送出後不跳轉:這是清空密碼欄最難的情況(單頁應用),欄位在送出後還留在頁面上。 -->
+<form id="login">
+  <label for="username">帳號</label><input id="username" name="username" type="text">
+  <label for="password">密碼</label><input id="password" name="password" type="password">
+  <button id="submit" type="submit">登入</button>
+</form>
+<p id="status"></p>
+<!-- 同源的另一個表單:模型若把搜尋框當成 passwordRef,節點型別檢查要擋下。 -->
+<label for="search">搜尋</label><input id="search" name="q" type="text">
+<button id="search-btn" type="button">送出搜尋</button>
+<script>
+  window.__submitted = null
+  window.__searched = null
+  document.getElementById('login').addEventListener('submit', (event) => {
+    event.preventDefault()
+    window.__submitted = { u: document.getElementById('username').value, p: document.getElementById('password').value }
+    document.getElementById('status').textContent = '已送出'
+  })
+  document.getElementById('search-btn').addEventListener('click', () => {
+    window.__searched = document.getElementById('search').value
+  })
+</script>

@@ -1,0 +1,193 @@
+# yeschef 功能對照表
+#
+# 一個使用者可見功能一筆。verify 是 `npm run verify <flow>` 的穩定名字清單(見
+# spikes/verify.ts),可能是空陣列(沒有對應的驗證 spike,只能靠 vitest 或人工)。
+# manual 指向對應的 docs/RESULTS-*.md 或 docs/LOCAL-ACCEPTANCE-*.md 與其中要人核對的項次。
+# 事實只取自 docs/specs 與 docs/RESULTS-3[4-9]*.md,不臆測未記錄的行為。
+
+- name: 瀏覽器與網址列
+  entry: 每個對話分頁自己的網址列與瀏覽器工具列(BrowserBar),右窗格顯示對應頁面
+  requires:
+    - 無特殊前提,每個對話內建一個獨立 partition 的瀏覽器 session
+  verify:
+    - browser
+    - sessions
+  manual:
+    file: docs/RESULTS-34-per-conversation-browser.md
+    items: [1, 3, 4, 5, 7, 8]
+  code:
+    - src/renderer/components/BrowserBar.tsx
+    - src/main/browser-ipc-handlers.ts
+    - src/main/agent-view.ts
+    - src/main/browser-commands.ts
+
+- name: 測試機與 view_login
+  entry: 標題列「測試機」對話框(TestMachinesManager),agent 呼叫 view_login 工具登入
+  requires:
+    - 專案已在對話框裡設定測試機帳密,密文存在 macOS Keychain
+  verify:
+    - browser
+  manual:
+    file: docs/RESULTS-35-test-machines.md
+    items: [1, 6, 7]
+  code:
+    - src/renderer/components/TestMachinesManager.tsx
+    - src/main/test-machines/service.ts
+    - src/main/view-tools/controller-login.ts
+    - src/main/test-machines/ipc.ts
+
+- name: 錯誤收集資料庫設定
+  entry: 標題列「錯誤收集」對話框(ErrorIntakeManager),設定共用錯誤資料庫
+  requires:
+    - 可連線的 MySQL 資料庫與具備建表、建立使用者及授權能力的管理者帳號
+  verify: []
+  manual:
+    file: docs/RESULTS-error-intake-2026-10-01.md
+    items: [1, 2, 3, 4]
+  code:
+    - src/renderer/components/ErrorIntakeManager.tsx
+    - src/main/error-intake/service.ts
+    - src/main/error-intake/database.ts
+    - src/main/error-intake/store.ts
+    - src/main/error-intake/ipc.ts
+    - src/shared/error-intake.ts
+    - src/preload/bridge.ts
+
+- name: 外觀
+  entry: 跟隨 macOS 系統外觀與強調色,套用在整個工作台(theme.css 與各元件 CSS)
+  requires:
+    - macOS,BaseWindow 的 vibrancy 與 AccentColor 才會生效
+  verify:
+    - contrast
+    - screenshots
+  manual:
+    file: docs/RESULTS-36-apple-design.md
+    items: [1, 2, 3, 5]
+  code:
+    - src/renderer/theme.css
+    - src/main/index.ts
+    - src/renderer/components/App.css
+
+- name: Grok 對話
+  entry: 左窗格「+ Grok」開新對話
+  requires:
+    - grok CLI 在 PATH 上
+    - 會用 grok.com 額度(送出訊息與 spike:grok 都會)
+  verify:
+    - grok
+  manual:
+    file: docs/RESULTS-37-grok-runtime.md
+    items: [1, 2, 3, 4, 5, 6, 7]
+  code:
+    - src/main/grok/client.ts
+    - src/main/grok/conversation.ts
+    - src/main/grok/mapper.ts
+    - src/main/grok/catalog.ts
+
+- name: worktree 合併
+  entry: 帶 worktree 的對話分頁上的合併／放棄操作(WorktreeMergeBar)
+  requires:
+    - 專案是 git repository,對話開在一個 worktree 分支上
+  verify: []
+  manual:
+    file: docs/RESULTS-38-worktree-merge.md
+    items: [1, 2, 3, 4, 5, 6]
+  code:
+    - src/main/merge.ts
+    - src/main/worktree-merge-ipc.ts
+    - src/main/worktree.ts
+    - src/renderer/components/WorktreeMergeBar.tsx
+
+- name: Chef 路由
+  entry: 工作台頂端「主廚」控制台,交付目標文字後自動選模型委派任務
+  requires:
+    - 至少一個 provider(claude／codex／grok)可用且已加入允許模型池
+  verify: []
+  manual:
+    file: docs/LOCAL-ACCEPTANCE-AUTO-CHEF-2026-09-21.md
+    items: []
+    note: 沒有編號驗收清單,見文件內「真實工作台驗證」段落;故障、拒絕與重啟恢復只用自動測試模擬過,沒有真的製造 provider 故障
+  code:
+    - src/main/chef/routing.ts
+    - src/main/chef/service.ts
+    - src/main/chef/tools.ts
+    - src/renderer/components/ChefManager.tsx
+
+- name: 共用 skills
+  entry: 標題列「Skills」管理入口(SkillsManager),貼 GitHub URL 安裝共用庫
+  requires:
+    - skills 來源是公開 GitHub repository
+  verify: []
+  manual:
+    file: docs/RESULTS-shared-skills-2026-09-21.md
+    items: [1, 2, 3, 4, 5, 6, 7]
+    note: 七項已於文件記錄的日期實機驗收完成,不是待驗清單
+  code:
+    - src/renderer/components/SkillsManager.tsx
+    - src/main/skills/service.ts
+    - src/main/skills/github.ts
+    - src/main/skills/ipc.ts
+
+- name: 文件預覽
+  entry: 對話裡點文件連結,或工具列開啟預覽,右側 PreviewPane 顯示內容、目錄與搜尋
+  requires:
+    - 無特殊前提,連結可帶 file.md:12、:12:3、#L12、#L12-L20 定位
+  verify: []
+  manual:
+    file: docs/RESULTS-document-navigation-2026-09-18.md
+    items: []
+    note: 文件記錄的情境全部已用真的 YesChef Electron 實機驗收完成,沒有留待驗項目
+  code:
+    - src/renderer/components/PreviewPane.tsx
+    - src/main/preview-read.ts
+
+- name: diff 面板
+  entry: 對話工具列「查看 diff」在右側開啟開發變更(DevelopmentDiff),多 repo 專案另有選單
+  requires:
+    - 工作目錄或其子目錄是 git repository,才看得到對應的 diff
+  verify: []
+  manual:
+    file: docs/RESULTS-multi-repo-diff-2026-09-21.md
+    items: []
+    note: 文件記錄的父層多 repo 情境已用真實專案實機驗收完成;單一 repo 的基礎行為另見 docs/RESULTS-conversation-tools-2026-09-21.md
+  code:
+    - src/renderer/components/DevelopmentDiff.tsx
+    - src/main/development-diff.ts
+    - src/main/git-run.ts
+
+- name: 終端機
+  entry: 左窗格分頁列的 shell／claude／codex／grok 快捷,開一個終端機分頁(Terminal)
+  requires:
+    - node-pty 原生模組(spawn-helper 需可執行,見 scripts/fix-node-pty.mjs)
+    - 對應 CLI(claude／codex／grok)要在 PATH 上,快捷才叫得動
+  verify: []
+  manual:
+    file: docs/RESULTS-06-c-terminals.md
+    items: [3]
+    note: Task 6 步驟 3(resize reflow)在自動化下量不到精確 col 數,標記需要人工手動慢速縮放視窗複驗;grok 快捷指令名稱也待裝上 grok CLI 後確認
+  code:
+    - src/renderer/components/Terminal.tsx
+    - src/main/terminal-server.ts
+    - src/renderer/components/LeftPane.tsx
+    - scripts/fix-node-pty.mjs
+
+- name: 群組頻道
+  entry: 每個專案固定排第一的「群組」分頁(GroupPane),打一句目標由主廚委派 Claude/Codex 工作者,里程碑與發言都在同一條訊息流
+  requires:
+    - 主廚服務已啟動,至少一個 provider(claude/codex/grok)有可用模型
+    - 會用到 claude 與 codex 的額度(送出目標與 verify group 都會)
+  verify:
+    - group
+    - screenshots
+  manual:
+    file: docs/RESULTS-39-group-channel.md
+    items: [1, 2, 3, 4, 5, 6, 7]
+    note: 七項已於 2026-09-29 用 verify group 連跑兩次實機驗收通過;「@ 已離開的參與者不送」只有單元測試
+  code:
+    - src/main/group/service.ts
+    - src/main/group/store.ts
+    - src/main/group/messages.ts
+    - src/shared/group.ts
+    - src/renderer/components/GroupPane.tsx
+    - src/main/chef/service.ts
+    - spikes/group-acceptance.ts
