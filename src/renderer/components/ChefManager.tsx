@@ -1,16 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
 import type { YesChefApi } from '../../shared/ipc.js'
 import { PROVIDER_LABELS, type ProjectsView } from '../../shared/projects.js'
-import type { ChefTask, ChefPolicy, ChefModel, ChefRequest, ChefResponse } from '../../shared/chef.js'
+import type { ChefTask, ChefPolicy, ChefModel, ChefUnavailableModel, ChefRequest, ChefResponse } from '../../shared/chef.js'
 import { ChefUiCheck } from './ChefUiCheck.js'
 import './SkillsManager.css'
 import './ChefManager.css'
 const kindLabels: Record<string, string> = { analysis: '分析', code: '實作', test: '測試', docs: '文件', review: '驗收' }
 const attemptLabels: Record<string, string> = { running: '執行中', stopping: '停止中', done: '已結束', failed: '失敗', blocked: '等待處理' }
 const labels: Record<ChefTask['status'], string> = { queued: '排程中', running: '執行中', stopping: '正在停止', completed: '本輪完成', blocked: '等待處理', cancelled: '已停止' }
+function formatUnavailableUntil(expiresAt: number): string {
+  const date = new Date(expiresAt), pad = (value: number) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}/${pad(date.getMonth() + 1)}/${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
 export function ChefManager({ api, projects, selectedTaskId, onClose }: { api: Pick<YesChefApi, 'manageChef' | 'activateTab'>; projects: ProjectsView; selectedTaskId?: string; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null), alive = useRef(true), sequence = useRef(0), mutation = useRef(false)
-  const [tasks, setTasks] = useState<ChefTask[]>([]), [models, setModels] = useState<ChefModel[]>([]), [notices, setNotices] = useState<string[]>([])
+  const [tasks, setTasks] = useState<ChefTask[]>([]), [models, setModels] = useState<ChefModel[]>([]), [unavailableModels, setUnavailableModels] = useState<ChefUnavailableModel[]>([]), [notices, setNotices] = useState<string[]>([])
   const [projectId, setProjectId] = useState(projects.activeId ?? projects.projects[0]?.id ?? '')
   const [goal, setGoal] = useState(''), [mode, setMode] = useState<ChefPolicy['mode']>('auto'), [allowed, setAllowed] = useState<string[]>([]), [preferred, setPreferred] = useState('')
   const [maxExecutions, setMaxExecutions] = useState(6), [deadlineMinutes, setDeadline] = useState(120)
@@ -19,7 +23,7 @@ export function ChefManager({ api, projects, selectedTaskId, onClose }: { api: P
   const initializedPool = useRef(false)
   function accept(response: ChefResponse) {
     if (response.kind === 'error') { setError(response.message); return }
-    setTasks(response.state.tasks); setModels(response.state.models); setNotices(response.state.notices)
+    setTasks(response.state.tasks); setModels(response.state.models); setUnavailableModels(response.state.unavailableModels); setNotices(response.state.notices)
     if (!initializedPool.current && response.state.models.length) { setAllowed(response.state.models.map(m => m.key)); setPreferred(response.state.models[0]!.key); initializedPool.current = true }
     else if (initializedPool.current) { setAllowed(previous => previous.filter(key => response.state.models.some(m => m.key === key))); setPreferred(previous => response.state.models.some(m => m.key === previous) ? previous : '') }
   }
@@ -61,7 +65,10 @@ export function ChefManager({ api, projects, selectedTaskId, onClose }: { api: P
           <details><summary>模型池與執行上限（{allowed.length} 個模型）</summary>
             <p className="skills-hint">使用 provider 回傳的模型清單。允許的模型會收到任務與交接內容。自動模式依工作類型、預設候選與本次失敗紀錄選擇；不保證每個列出的模型都能通過實際執行的登入／額度檢查。</p>
             <button type="button" onClick={() => { setBusy(true); void read(true) }}>重新讀取模型</button>
-            <div className="chef-models">{models.map(model => <label key={model.key}><input type="checkbox" checked={allowed.includes(model.key)} onChange={e => setAllowed(previous => e.target.checked ? [...previous, model.key] : previous.filter(k => k !== model.key))} /><span>{PROVIDER_LABELS[model.provider].name} · {model.label}</span></label>)}</div>
+            <div className="chef-models">{models.map(model => {
+              const unavailable = unavailableModels.find(item => item.key === model.key)
+              return <label key={model.key}><input type="checkbox" checked={allowed.includes(model.key)} onChange={e => setAllowed(previous => e.target.checked ? [...previous, model.key] : previous.filter(k => k !== model.key))} /><span>{PROVIDER_LABELS[model.provider].name} · {model.label}{unavailable && <small>帳號不支援，{formatUnavailableUntil(unavailable.expiresAt)} 前暫不選用</small>}</span></label>
+            })}</div>
             {mode !== 'auto' && <label className="chef-field">指定模型<select aria-label="指定主廚模型" value={preferred} onChange={e => setPreferred(e.target.value)}><option value="" disabled>選擇模型</option>{models.filter(m => allowed.includes(m.key)).map(m => <option key={m.key} value={m.key}>{m.provider} · {m.label}</option>)}</select></label>}
             <div className="chef-controls"><label>最多執行次數<input aria-label="最多執行次數" type="number" min={1} max={20} value={maxExecutions} onChange={e => setMaxExecutions(Number(e.target.value))} /></label><label>任務期限（分鐘）<input aria-label="任務期限" type="number" min={1} max={240} value={deadlineMinutes} onChange={e => setDeadline(Number(e.target.value))} /></label></div>
             <p className="skills-hint">次數包含主廚、子工作、驗收與改派；每個工作最多自動改派 2 次。這是執行與時間上限，不是美元費用保證。沿用專案授權，拒絕或未確認的工具結果不會被自動繞過。</p>

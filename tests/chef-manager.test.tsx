@@ -7,7 +7,7 @@ import type { ProjectsView } from '../src/shared/projects.js'
 beforeEach(() => { HTMLDialogElement.prototype.showModal = function () { this.open = true } })
 afterEach(cleanup)
 const projects: ProjectsView = { activeId: 'p', projects: [{ id: 'p', name: 'Test', rootPath: '/test', available: true, pendingApproval: false, pendingTabIds: [], busyTabIds: [], producingTabIds: [], busySince: {}, tabs: [], threads: [], activeTabId: '' }] }
-const state: ChefResponse = { kind: 'state', state: { tasks: [], notices: [], models: [{ key: 'claude:c', provider: 'claude', model: 'c', label: 'C', description: '', recommended: true }, { key: 'codex:x', provider: 'codex', model: 'x', label: 'X', description: '', recommended: true }] } }
+const state: ChefResponse = { kind: 'state', state: { tasks: [], notices: [], unavailableModels: [], models: [{ key: 'claude:c', provider: 'claude', model: 'c', label: 'C', description: '', recommended: true }, { key: 'codex:x', provider: 'codex', model: 'x', label: 'X', description: '', recommended: true }] } }
 const uiTask = (withUiCheck: boolean): ChefTask => ({
   id: 'task-1', projectId: 'p', cwd: '/test', goal: '介面工作', followups: [],
   policy: { mode: 'auto', allowed: ['claude:c'], maxExecutions: 6, deadlineMinutes: 30 },
@@ -18,6 +18,20 @@ const uiTask = (withUiCheck: boolean): ChefTask => ({
   } : {}),
 })
 const stateWithTask = (task: ChefTask): ChefResponse => ({ kind: 'state', state: { ...state.state, tasks: [task] } })
+it('模型池標示帳號不支援的模型，同時保留可操作的勾選框', async () => {
+  const expiresAt = new Date(2026, 9, 2, 14, 5).getTime()
+  const response: ChefResponse = { kind: 'state', state: { ...state.state, unavailableModels: [{ key: 'codex:x', expiresAt }] } }
+  const manageChef = vi.fn(async (): Promise<ChefResponse> => response)
+  render(<ChefManager api={{ manageChef, activateTab: vi.fn() }} projects={projects} onClose={() => {}} />)
+  await screen.findByText('Codex · X')
+  fireEvent.click(screen.getByText('模型池與執行上限（2 個模型）'))
+  expect(screen.getByText('帳號不支援，2026/10/02 14:05 前暫不選用')).toBeTruthy()
+  const checkbox = screen.getByRole('checkbox', { name: /Codex · X/ }) as HTMLInputElement
+  expect(checkbox.checked).toBe(true)
+  expect(checkbox.disabled).toBe(false)
+  fireEvent.click(checkbox)
+  expect(checkbox.checked).toBe(false)
+})
 it('does not start on open; submits automatic policy with only the explicitly allowed pool', async () => {
   const manageChef = vi.fn(async (_request: ChefRequest): Promise<ChefResponse> => state)
   render(<ChefManager api={{ manageChef, activateTab: vi.fn() }} projects={projects} onClose={() => {}} />)

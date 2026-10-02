@@ -10,7 +10,7 @@ import type { Provider } from '../../shared/projects.js'
 import type { GroupMessageInput } from '../group/service.js'
 import { MSG as GROUP_MSG, labelFor, roleOf } from '../group/messages.js'
 import type { ModelCatalog } from './models.js'
-import { chooseModel, isModelUnavailableError, providerFailure, startedBackgroundId, stoppedBackgroundId } from './routing.js'
+import { chooseModel, isModelUnavailableError, providerFailure, startedBackgroundId, stoppedBackgroundId, unavailableModelsFromTasks } from './routing.js'
 import { selectCodexReasoningEffort } from '../codex/reasoning-effort.js'
 import type { DeadlineReviewInput, DeadlineReviewer } from './deadline-reviewer.js'
 import { applyVerifiedUiCheck, prepareUiCheck, uiCheckPrompt, validateUiFindingResolution, verifyFixedUiFindings } from './ui-check/acceptance.js'
@@ -156,7 +156,7 @@ export async function createChefService(deps: ChefDeps) {
   }
   const changed = () => { if (!closed && !storageError && !dirtyTimer) dirtyTimer = setTimeout(() => { void save().catch(() => { for (const task of tasks) if (['running','queued'].includes(task.status)) void cancel(task, '任務儲存失敗，執行已停止。').catch(() => {}) }) }, 250) }
   const current = (id: string) => { for (const task of tasks) { const attempt = task.attempts.find(a => a.workerId === id); if (attempt) return { task, attempt, unit: task.units.find(u => u.id === attempt.unitId)! } } return undefined }
-  const snapshot = (): ChefResponse => ({ kind: 'state', state: { tasks: tasks.slice(-50).map(t => ({ ...t, attempts: t.attempts.map(a => ({ ...a, events: [] })) })), models, notices: [...notices, ...(storageError ? [storageError] : [])] } })
+  const snapshot = (): ChefResponse => ({ kind: 'state', state: { tasks: tasks.slice(-50).map(t => ({ ...t, attempts: t.attempts.map(a => ({ ...a, events: [] })) })), models, unavailableModels: unavailableModelsFromTasks(tasks, now()), notices: [...notices, ...(storageError ? [storageError] : [])] } })
   async function inventory(refresh = false) { const result = await deps.catalog.list(refresh); models = result.models; notices = result.notices; globalReasoningEffort = result.globalReasoningEffort }
   const leased = (task: ChefTask) => ['queued','running','stopping'].includes(task.status) || task.needsReconciliation
   function workspaceConflict(cwd: string): string | undefined {
@@ -368,10 +368,11 @@ export async function createChefService(deps: ChefDeps) {
       if (task.cancelRequested || closed || !['queued','running'].includes(task.status)) return
       await prepareUiCheck(task, unit, deps.readUiCheckFiles, save)
       const attempts = task.attempts.slice(unit.retryAfter ?? 0).filter(a => a.unitId === unit.id)
-      const unavailableModelKeys = [...new Set(task.attempts
+      const unavailableModelKeys = new Set(task.attempts
         .filter(attempt => attempt.failureKind === 'model-unavailable')
-        .map(attempt => `${attempt.provider}:${attempt.model}`))]
-      const candidate = chooseModel(models, task.policy, unit.kind, attempts, task.attempts.at(-1)?.provider, unavailableModelKeys)
+        .map(attempt => `${attempt.provider}:${attempt.model}`))
+      for (const unavailable of unavailableModelsFromTasks(tasks, now())) unavailableModelKeys.add(unavailable.key)
+      const candidate = chooseModel(models, task.policy, unit.kind, attempts, task.attempts.at(-1)?.provider, [...unavailableModelKeys])
       if (!candidate) { block(task, '沒有可用且獲授權的候選模型；請檢查連線或模型池。'); await save(); return }
       const reasoningEffort = candidate.provider === 'codex'
         ? selectCodexReasoningEffort(globalReasoningEffort, candidate.supportedReasoningEfforts, candidate.defaultReasoningEffort)

@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest'
-import { chooseModel, isModelUnavailableError, providerFailure } from '../src/main/chef/routing.js'
+import { chooseModel, isModelUnavailableError, providerFailure, unavailableModelsFromTasks, UNSUPPORTED_MODEL_COOLDOWN_MS } from '../src/main/chef/routing.js'
 import type { ChefAttempt, ChefModel, ChefPolicy } from '../src/shared/chef.js'
 
 it('只有提供者／transport 故障可改派；拒絕、取消和一般工作失敗不改派', () => {
@@ -14,6 +14,45 @@ const grokModel: ChefModel = { key: 'grok:g', provider: 'grok', model: 'g', labe
 const codexFallback: ChefModel = { key: 'codex:fallback', provider: 'codex', model: 'fallback', label: 'Codex fallback', description: '', recommended: false }
 const autoPolicy = (allowed: readonly ChefModel[]): ChefPolicy => ({ mode: 'auto', allowed: allowed.map(m => m.key), maxExecutions: 6, deadlineMinutes: 30 })
 const noAttempts: readonly ChefAttempt[] = []
+const unavailableAttempt = (startedAt: number, over: Partial<Pick<ChefAttempt, 'endedAt' | 'failureKind' | 'provider' | 'model'>> = {}) => ({
+  failureKind: 'model-unavailable' as const,
+  provider: 'codex' as const,
+  model: 'gpt-6-sol',
+  startedAt,
+  endedAt: startedAt,
+  ...over,
+})
+
+it('跨任務排除 24 小時內回報不支援的模型並提供到期時間', () => {
+  const now = 10_000_000
+  const result = unavailableModelsFromTasks([{ attempts: [unavailableAttempt(now - 60_000)] }], now)
+  expect(result).toEqual([{ key: 'codex:gpt-6-sol', expiresAt: now - 60_000 + UNSUPPORTED_MODEL_COOLDOWN_MS }])
+})
+
+it('跨任務模型排除超過 24 小時後到期', () => {
+  const now = 10_000_000
+  expect(unavailableModelsFromTasks([{ attempts: [unavailableAttempt(now - UNSUPPORTED_MODEL_COOLDOWN_MS - 1)] }], now)).toEqual([])
+})
+
+it('attempt 沒有 endedAt 時以 startedAt 計算到期時間', () => {
+  const now = 10_000_000
+  const result = unavailableModelsFromTasks([{ attempts: [unavailableAttempt(now - 1_000, { endedAt: undefined })] }], now)
+  expect(result).toEqual([{ key: 'codex:gpt-6-sol', expiresAt: now - 1_000 + UNSUPPORTED_MODEL_COOLDOWN_MS }])
+})
+
+it('只排除 failureKind 為 model-unavailable 的 attempt', () => {
+  const now = 10_000_000
+  expect(unavailableModelsFromTasks([{ attempts: [unavailableAttempt(now - 1_000, { failureKind: undefined })] }], now)).toEqual([])
+})
+
+it('合併多個任務時同一模型只列一次並採用較晚到期時間', () => {
+  const now = 10_000_000
+  const result = unavailableModelsFromTasks([
+    { attempts: [unavailableAttempt(now - 2_000)] },
+    { attempts: [unavailableAttempt(now - 1_000), unavailableAttempt(now - 500, { model: 'gpt-6-sol' })] },
+  ], now)
+  expect(result).toEqual([{ key: 'codex:gpt-6-sol', expiresAt: now - 500 + UNSUPPORTED_MODEL_COOLDOWN_MS }])
+})
 
 it('只把 HTTP 404 且明確指向不存在或不支援模型的錯誤分類為模型不可用', () => {
   const upstream = 'unexpected status 404 Not Found: Model "gpt-6-astra" is not supported by any configured account in this group, url: https://api.example.com/responses, request id: ...'
@@ -47,7 +86,7 @@ it('模型不可用只排除失敗模型，同 provider 的候選仍照常排序
   expect(chooseModel(models, autoPolicy(models), 'code', [unavailable])?.key).toBe('codex:fallback')
 })
 
-it('模型不可用 key 只在呼叫端提供的 task 範圍排除', () => {
+it('同一任務傳入的舊 unavailable key 即使超過 24 小時仍會排除', () => {
   const astra = { key: 'codex:astra', provider: 'codex' as const, model: 'astra', label: 'Astra', description: '', recommended: true }
   const models = [claudeModel, astra, codexFallback]
   const unavailable: ChefAttempt = {

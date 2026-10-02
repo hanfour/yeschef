@@ -32,7 +32,9 @@ export const ChefReportSchema = z.object({ outcome: z.enum(['completed', 'blocke
 export const ChefTaskSchema = z.object({ id: z.string(), projectId: z.string(), cwd: z.string(), goal: z.string(), purpose: z.enum(CHEF_TASK_PURPOSES).optional(), errorFixWrittenFor: z.string().optional(), followups: z.array(z.string()).default([]), policy: ChefPolicySchema, status: z.enum(['queued', 'running', 'stopping', 'completed', 'blocked', 'cancelled']), createdAt: z.number(), deadlineAt: z.number(), units: z.array(ChefUnitSchema), attempts: z.array(ChefAttemptSchema), reason: z.string(), cancelRequested: z.boolean(), needsReconciliation: z.boolean(), uiCheck: ChefUiCheckSchema.optional(), report: ChefReportSchema.extend({ unitId: z.string() }).optional() })
 export type ChefTask = z.infer<typeof ChefTaskSchema>
 export type ChefAttempt = z.infer<typeof ChefAttemptSchema>
-export const ChefStateSchema = z.object({ tasks: z.array(ChefTaskSchema), models: z.array(ChefModelSchema), notices: z.array(z.string()) })
+export const ChefUnavailableModelSchema = z.object({ key: z.string(), expiresAt: z.number().int().nonnegative() })
+export type ChefUnavailableModel = z.infer<typeof ChefUnavailableModelSchema>
+export const ChefStateSchema = z.object({ tasks: z.array(ChefTaskSchema), models: z.array(ChefModelSchema), unavailableModels: z.array(ChefUnavailableModelSchema), notices: z.array(z.string()) })
 export const ChefRequestSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('get'), refreshModels: z.boolean().optional() }).strict(),
   z.object({ action: z.literal('start'), projectId: z.string(), goal: z.string().min(1).max(20000), policy: ChefPolicySchema }).strict(),

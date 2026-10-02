@@ -52,3 +52,15 @@
 - 目前是序列委派；並行隔離工作樹、同模型退避重試、嚴格美元預算與附件型主廚目標尚未實作。成本只顯示 provider 回報值。
 - workspace 互斥範圍是 YesChef 管理的模型輸入；不鎖作業系統上的外部編輯器或終端機。Claude 原生 Agent／Task 已停用，提示禁止 shell 啟動其他 agent，但這不是完整的 OS 程序隔離。
 - report_result 的 summary 仍是模型判讀，使用者應以 diff、實際測試與原始工具結果驗收重要變更。
+
+## 跨任務模型冷卻驗收（2026-10-02）
+
+| 項目 | 結果 |
+| --- | --- |
+| 修前重現 | 主廚 service 測試將任務 A 的 404 分類為 `model-unavailable` 並改派成功；任務 B 第一個 worker 仍選 `gpt-6-sol`，預期的備援模型為 `gpt-5`。錯誤使用假 worker 模擬，沒有呼叫真實 Codex API。 |
+| 修後主廚流程 | 任務 A 的模型 key 會影響接續任務的首次選擇，到期時間由 `endedAt` 計算，缺少時使用 `startedAt`。24 小時到期後可重新選用。同任務內的舊 key 仍會排除模型。 |
+| 全候選被排除 | 任務維持既有 block 狀態與訊息「沒有可用且獲授權的候選模型；請檢查連線或模型池。」沒有啟動被排除模型。 |
+| 主廚模型池 UI | 元件測試確認顯示帳號不支援與到期時間，且核取框仍能取消選取。 |
+| TypeScript | `npm run typecheck` 通過。 |
+| 完整 Vitest | `npx vitest run --configLoader runner --exclude tests/chef-view-tools.test.ts --exclude tests/grok-view-tools.test.ts --exclude tests/terminal-server.test.ts --exclude tests/view-tools-http-server.test.ts`：184 個測試檔通過、1 個略過；3,225 項通過、1 項略過。 |
+| Electron 截圖 | 未驗收。`npm run verify screenshots` 的 build 與打包通過，但 Electron 啟動時以 `SIGABRT` 結束，沒有輸出 `.spike-out/ui/` 截圖。第二次啟動仍以相同結果結束，已停止重試。 |

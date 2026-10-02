@@ -94,6 +94,26 @@ async function main(): Promise<void> {
     const stillOpen = await wc.executeJavaScript(`document.querySelector('dialog[open]') !== null`)
     if (stillOpen) throw new Error(`對話框沒關掉，還留著：${label}`)
   }
+  const verifyChefCooldown = async (): Promise<void> => {
+    const state = await wc.executeJavaScript(`(async () => {
+      const summary = [...document.querySelectorAll('summary')].find((item) => item.textContent?.trim().startsWith('模型池與執行上限'))
+      if (summary?.parentElement instanceof HTMLDetailsElement) summary.parentElement.open = true
+      await new Promise((resolve) => requestAnimationFrame(resolve))
+      const hint = [...document.querySelectorAll('.chef-models small')].find((item) => item.textContent?.startsWith('帳號不支援，'))
+      const checkbox = document.querySelector('.chef-models input[type="checkbox"]')
+      if (!(checkbox instanceof HTMLInputElement)) return { hint: hint?.textContent, checkboxFound: false }
+      const initial = checkbox.checked
+      checkbox.click()
+      await new Promise((resolve) => requestAnimationFrame(resolve))
+      const toggled = checkbox.checked !== initial
+      checkbox.click()
+      await new Promise((resolve) => requestAnimationFrame(resolve))
+      return { hint: hint?.textContent, checkboxFound: true, enabled: !checkbox.disabled, initiallyChecked: initial, toggled, restored: checkbox.checked === initial }
+    })()`)
+    const ok = typeof state.hint === 'string' && state.hint.includes('前暫不選用') && state.checkboxFound && state.enabled && state.toggled && state.restored
+    check('chef-model-cooldown-interactive', ok, JSON.stringify(state))
+    if (!ok) throw new Error(`主廚模型冷卻提示或勾選框檢查失敗：${JSON.stringify(state)}`)
+  }
   const selectGroupTab = (): Promise<void> => wc.executeJavaScript(`(() => {
     const tab = document.querySelector('.conversation-tabs [role="tab"][data-provider="group"]')
     if (!tab) throw new Error('沒有群組分頁')
@@ -207,6 +227,7 @@ async function main(): Promise<void> {
     for (const dialog of DIALOGS) {
       await click(dialog.button)
       await wait(400)
+      if (dialog.name === 'chef') await verifyChefCooldown()
       await shot(`${theme}-${dialog.name}`)
       await escape()
       await wait(200)

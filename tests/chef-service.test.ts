@@ -21,13 +21,13 @@ const retryModels: ChefModel[] = [
 const unsupportedAstra = 'unexpected status 404 Not Found: Model "gpt-6-astra" is not supported by any configured account in this group, url: https://api.example.com/responses, request id: red-test'
 const roots: string[] = [], services: ChefService[] = []
 afterEach(async () => { for (const service of services.splice(0)) await service.dispose(); for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }) })
-async function rig(options: { stopped?: boolean; start?: (request: WorkerRequest) => Promise<void>; onStop?: () => Promise<void>; models?: readonly ChefModel[]; maxExecutions?: number; busy?: boolean; groupWriteThrows?: boolean } = {}) {
+async function rig(options: { stopped?: boolean; start?: (request: WorkerRequest) => Promise<void>; onStop?: () => Promise<void>; models?: readonly ChefModel[]; maxExecutions?: number; busy?: boolean; groupWriteThrows?: boolean; now?: () => number } = {}) {
   const root = realpathSync.native(await mkdtemp(join(tmpdir(), 'yeschef-chef-'))); roots.push(root)
   const started: WorkerRequest[] = [], ready: string[] = [], stopped: string[] = [], errors: Error[] = []
   const available = [...(options.models ?? models)]
   const milestones: GroupMessageInput[] = []
   const catalog = { list: async () => ({ models: available, notices: [] }) }
-  const deps = { dir: join(root, 'tasks'), catalog, rootOf: (id: string) => id === 'p' ? root : undefined, busyIn: () => options.busy === true, logError: (e: Error) => errors.push(e), group: { write: (message: GroupMessageInput) => { if (options.groupWriteThrows) throw Error('group write failed'); milestones.push(message) }, recent: async () => [] }, startWorker: async (request: WorkerRequest) => { started.push(request); await options.start?.(request); ready.push(request.id); return { stop: async () => { await options.onStop?.(); stopped.push(request.id); return options.stopped !== false } } } }
+  const deps = { dir: join(root, 'tasks'), catalog, rootOf: (id: string) => id === 'p' ? root : undefined, busyIn: () => options.busy === true, logError: (e: Error) => errors.push(e), ...(options.now ? { now: options.now } : {}), group: { write: (message: GroupMessageInput) => { if (options.groupWriteThrows) throw Error('group write failed'); milestones.push(message) }, recent: async () => [] }, startWorker: async (request: WorkerRequest) => { started.push(request); await options.start?.(request); ready.push(request.id); return { stop: async () => { await options.onStop?.(); stopped.push(request.id); return options.stopped !== false } } } }
   const service = await createChefService(deps); services.push(service)
   const policy: ChefPolicy = { mode: 'auto', allowed: available.map(m => m.key), maxExecutions: options.maxExecutions ?? 6, deadlineMinutes: 30 }
   async function task(): Promise<ChefTask> { const response = await service.handle({ action: 'get' }); if (response.kind !== 'state') throw Error(response.message); return response.state.tasks[0]! }
@@ -115,6 +115,53 @@ it('task 內第一個 code 單位遇到不可用模型後，第二個 code 單�
   r.end(r.started[2]!.id)
   await vi.waitFor(() => expect(r.started).toHaveLength(4))
   expect(r.started[3]).toMatchObject({ model: 'gpt-5', title: '第二項實作' })
+})
+it('任務 A 的模型不可用會暫時排除任務 B 的首次選擇，24 小時後可重新選用', async () => {
+  const clock = { value: 1_800_000_000_000 }
+  const models: ChefModel[] = [
+    { key: 'codex:gpt-6-sol', provider: 'codex', model: 'gpt-6-sol', label: 'Codex Sol', description: '', recommended: true },
+    { key: 'codex:gpt-5', provider: 'codex', model: 'gpt-5', label: 'Codex fallback', description: '', recommended: false },
+  ]
+  const r = await rig({ models, now: () => clock.value })
+  const first = await r.start()
+  expect(first.model).toBe('gpt-6-sol')
+  r.end(first.id, { isError: true, apiErrorStatus: 404, errorMessage: 'unexpected status 404 Not Found: Model "gpt-6-sol" is not supported by any configured account in this group' })
+  await vi.waitFor(() => expect(r.started).toHaveLength(2))
+  const firstTaskFallback = r.started[1]!
+  expect(firstTaskFallback.model).toBe('gpt-5')
+  await r.service.report(firstTaskFallback.id, { outcome: 'completed', summary: '任務 A 完成', checks: [] })
+  r.end(firstTaskFallback.id)
+  await vi.waitFor(async () => {
+    const response = await r.service.handle({ action: 'get' })
+    expect(response.kind === 'state' ? response.state.tasks[0]?.status : undefined).toBe('completed')
+  })
+
+  await r.service.handle({ action: 'start', projectId: 'p', goal: '任務 B', policy: r.policy })
+  await vi.waitFor(() => expect(r.started).toHaveLength(3))
+  const secondTaskWorker = r.started[2]!
+  expect(secondTaskWorker.model).toBe('gpt-5')
+  const state = await r.service.handle({ action: 'get' })
+  expect(state).toMatchObject({ kind: 'state', state: { unavailableModels: [{ key: 'codex:gpt-6-sol', expiresAt: clock.value + 24 * 60 * 60 * 1000 }] } })
+  await r.service.report(secondTaskWorker.id, { outcome: 'completed', summary: '任務 B 完成', checks: [] })
+  r.end(secondTaskWorker.id)
+  await vi.waitFor(async () => {
+    const response = await r.service.handle({ action: 'get' })
+    expect(response.kind === 'state' ? response.state.tasks.at(-1)?.status : undefined).toBe('completed')
+  })
+
+  await r.service.handle({ action: 'start', projectId: 'p', goal: '僅允許冷卻中的模型', policy: { ...r.policy, allowed: ['codex:gpt-6-sol'] } })
+  await vi.waitFor(async () => {
+    const response = await r.service.handle({ action: 'get' })
+    expect(response.kind === 'state' ? response.state.tasks.at(-1)?.status : undefined).toBe('blocked')
+  })
+  const blockedState = await r.service.handle({ action: 'get' })
+  if (blockedState.kind === 'state') expect(blockedState.state.tasks.at(-1)).toMatchObject({ reason: '沒有可用且獲授權的候選模型；請檢查連線或模型池。', attempts: [] })
+  expect(r.started).toHaveLength(3)
+
+  clock.value += 24 * 60 * 60 * 1000 + 1
+  await r.service.handle({ action: 'start', projectId: 'p', goal: '任務 C', policy: r.policy })
+  await vi.waitFor(() => expect(r.started).toHaveLength(4))
+  expect(r.started[3]?.model).toBe('gpt-6-sol')
 })
 it('一般 provider 故障的排序影響仍只限於原工作單位', async () => {
   const r = await rig({ models: retryModels }), chief = await r.start()

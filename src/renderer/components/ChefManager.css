@@ -9,6 +9,8 @@
 .chef-body summary { cursor: pointer; color: var(--label-2); font-size: var(--text-s); }
 .chef-models { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; max-height: 240px; overflow: auto; margin: 12px 0; }
 .chef-models label { display: flex; gap: 8px; font-size: var(--text-s); align-items: center; overflow-wrap: anywhere; }
+.chef-models label > span { display: grid; gap: 4px; min-width: 0; }
+.chef-models small { color: var(--label-2); font-size: var(--text-xs); }
 .chef-start { justify-self: start; }
 .chef-error { color: var(--danger); }
 .chef-tasks h2 { font-size: var(--text-l); }

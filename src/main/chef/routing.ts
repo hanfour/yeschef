@@ -12,6 +12,26 @@ const PREFERRED_BY_KIND: Readonly<Record<string, Provider>> = {
   code: 'codex', test: 'codex', analysis: 'claude', docs: 'claude',
 }
 const DEFAULT_PREFERRED: Provider = 'claude'
+export const UNSUPPORTED_MODEL_COOLDOWN_MS = 24 * 60 * 60_000
+
+export interface UnavailableModel { key: string; expiresAt: number }
+
+export function unavailableModelsFromTasks(
+  tasks: readonly { attempts: readonly Pick<ChefAttempt, 'failureKind' | 'provider' | 'model' | 'endedAt' | 'startedAt'>[] }[],
+  now: number,
+): UnavailableModel[] {
+  const expirations = new Map<string, number>()
+  for (const task of tasks) for (const attempt of task.attempts) {
+    if (attempt.failureKind !== 'model-unavailable') continue
+    const failedAt = attempt.endedAt ?? attempt.startedAt
+    const expiresAt = failedAt + UNSUPPORTED_MODEL_COOLDOWN_MS
+    if (!Number.isFinite(failedAt) || failedAt > now || expiresAt <= now) continue
+    const key = `${attempt.provider}:${attempt.model}`
+    const latestExpiry = expirations.get(key)
+    if (latestExpiry === undefined || expiresAt > latestExpiry) expirations.set(key, expiresAt)
+  }
+  return [...expirations].map(([key, expiresAt]) => ({ key, expiresAt })).sort((a, b) => a.key.localeCompare(b.key))
+}
 
 export function isModelUnavailableError(apiErrorStatus: unknown, message: string): boolean {
   const explicitStatus = typeof apiErrorStatus === 'number' && Number.isInteger(apiErrorStatus)

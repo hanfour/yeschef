@@ -99,7 +99,7 @@ export function createFakeYesChef(
   }
 
   const api: YesChefApi = {
-    manageChef: async () => ({ kind: 'state', state: { tasks: [], models: [], notices: [] } }),
+    manageChef: async () => ({ kind: 'state', state: { tasks: [], models: [], unavailableModels: [], notices: [] } }),
     conversationTools: async request => { if (request.action === 'send') { calls.push(`sendInput:${request.text}`); return { kind: 'sent' } } return { kind: 'error', message: '測試未設定對話工具' } },
     managePermissions: async () => ({ kind: 'state', state: { revision: 0, paused: false, policies: [] }, audit: [] }),
     manageSkills: async () => ({ kind: 'state', state: { revision: null, skills: [] } }),

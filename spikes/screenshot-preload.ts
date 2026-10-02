@@ -67,7 +67,12 @@ function activateFixtureTab(projectId: string, tabId: string): void {
 
 const api: YesChefApi = {
   // 對話框開得起來的查詢類：每個回一個 kind: 'state' 的空狀態
-  manageChef: async () => ({ kind: 'state', state: { tasks: [], models: [], notices: [] } }),
+  manageChef: async () => ({ kind: 'state', state: {
+    tasks: [],
+    models: [{ key: 'codex:gpt-6-sol', provider: 'codex', model: 'gpt-6-sol', label: 'gpt-6-sol', description: '', recommended: true }],
+    unavailableModels: [{ key: 'codex:gpt-6-sol', expiresAt: Date.now() + 24 * 60 * 60_000 }],
+    notices: [],
+  } }),
   conversationTools: async (request) => {
     if (request.action === 'send') return { kind: 'sent' }
     return { kind: 'error', message: '測試未設定對話工具' }
