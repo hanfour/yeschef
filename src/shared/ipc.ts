@@ -10,6 +10,7 @@ import type { ErrorIntakeRequest, ErrorIntakeResponse } from './error-intake.js'
 import type { GroupMessagesPayload, GroupOpenPayload, GroupRequest, GroupResponse } from './group.js'
 import type { WorktreeMergeRequest, WorktreeMergeResponse } from './worktree-merge.js'
 import type { BrowserCommand, BrowserCommandResult, BrowserSessionEntry, BrowserSnapshot, BrowserStatePayload } from './browser-ipc.js'
+import { PROJECT_RUN_CHANNEL, type ProjectRunRequest, type ProjectRunResponse, type ProjectRunUpdate } from './project-run.js'
 import {
   asProvider,
   type Provider,
@@ -86,6 +87,10 @@ export const IPC = {
   browserBounds: 'layout:browser-bounds',
   /** renderer → main(invoke):網址列的指令,作用在前景對話的瀏覽器。 */
   browserCommand: 'browser:command',
+  /** renderer → main(invoke):專案執行設定與程序操作。 */
+  projectRun: PROJECT_RUN_CHANNEL,
+  /** main → renderer:專案執行狀態與紀錄。 */
+  projectRunUpdate: 'projectRun:update',
   /** main → renderer:某個對話的瀏覽器狀態變了。 */
   browserState: 'browser:state',
   /** main → renderer:哪些對話有瀏覽器、哪些正在被工具操作。 */
@@ -191,6 +196,8 @@ export interface YesChefApi {
   manageErrorIntake(payload: ErrorIntakeRequest): Promise<ErrorIntakeResponse>
   /** 群組頻道的讀取與送訊息(群組規格 §7)。 */
   manageGroup(payload: GroupRequest): Promise<GroupResponse>
+  manageProjectRun(payload: ProjectRunRequest): Promise<ProjectRunResponse>
+  onProjectRunUpdate(cb: (update: ProjectRunUpdate) => void): Unsubscribe
   onGroupMessages(cb: (payload: GroupMessagesPayload) => void): Unsubscribe
   /** 一個專案最多一個群組分頁;已經開著就切過去。 */
   openGroup(projectId: string): void

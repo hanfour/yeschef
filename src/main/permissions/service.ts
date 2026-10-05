@@ -6,9 +6,11 @@ import { createApprovalRegistry, type ApprovalRegistryOptions, type ApprovalOutc
 import { collectEvidence, hash, within } from './evidence.js'
 import { ReviewResultSchema, type Reviewer } from './reviewer.js'
 import { canonicalToolName } from '../../shared/tool-name.js'
+import { blocksManagedServiceStop, type ManagedServiceRef } from '../project-run/guard.js'
 export interface PermissionContext { projectId: string; conversationId: string; cwd: string }
 export interface SaveDialogResult { canceled: boolean; filePath?: string }
 export type ShowSaveDialog = (options: { title: string; defaultPath: string; filters: { name: string; extensions: string[] }[] }) => Promise<SaveDialogResult>
+export const MANAGED_SERVICE_GUARD_MESSAGE = '這是 YesChef 管理的執行中服務，請使用者在『執行』面板操作'
 const record = (value: unknown): Record<string, unknown> | undefined => typeof value === 'object' && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : undefined
 const cap = (value: string): string => value.length > 200 ? value.slice(0, 200) : value
 /** 只留下可安全顯示的摘要，絕不含檔案內容、old_string/new_string 或完整輸入。 */
@@ -34,7 +36,14 @@ export interface PermissionService {
   registry(context: PermissionContext, options: ApprovalRegistryOptions): ReturnType<typeof createApprovalRegistry>
   dispose(): Promise<void>
 }
-export async function createPermissionService(dir: string, reviewer: Reviewer, projectExists: (id: string) => boolean, logError: (error: Error) => void, showSaveDialog?: ShowSaveDialog): Promise<PermissionService> {
+export async function createPermissionService(
+  dir: string,
+  reviewer: Reviewer,
+  projectExists: (id: string) => boolean,
+  logError: (error: Error) => void,
+  showSaveDialog?: ShowSaveDialog,
+  managedServicesForProject: (projectId: string) => readonly ManagedServiceRef[] = () => [],
+): Promise<PermissionService> {
   await mkdir(dir, { recursive: true, mode: 0o700 })
   const file = join(dir, 'policies.json'), auditFile = join(dir, 'audit.json')
   let state: PermissionState = { revision: 0, paused: false, policies: [] }
@@ -80,15 +89,31 @@ export async function createPermissionService(dir: string, reviewer: Reviewer, p
       return { kind: 'exported', path: result.filePath }
     } catch (error) { logError(error as Error); return { kind: 'error', message: '匯出授權紀錄失敗' } }
   }
+  function guardManagedServiceStop(context: PermissionContext, request: ApprovalRequest): ApprovalOutcome | null {
+    const input = record(request.input)
+    const rawInput = record(input?.['rawInput'])
+    const command = typeof input?.['command'] === 'string' ? input['command']
+      : typeof rawInput?.['command'] === 'string' ? rawInput['command']
+        : typeof request.input === 'string' ? request.input : undefined
+    const bashLike = request.toolName.toLowerCase() === 'bash'
+      || /bash|shell|execute|command|執行/i.test(request.toolName)
+      || command !== undefined
+    if (bashLike && command !== undefined && blocksManagedServiceStop(command, managedServicesForProject(context.projectId))) {
+      return { decision: 'deny', source: 'system', reason: MANAGED_SERVICE_GUARD_MESSAGE }
+    }
+    return null
+  }
   async function forbidden(context: PermissionContext, request: ApprovalRequest): Promise<ApprovalOutcome | null> {
     const version = state.revision
     if (changing || closed) return { decision: 'deny', source: 'system', reason: '授權正在變更或工作台已關閉，請重試' }
+    const managedStop = guardManagedServiceStop(context, request)
+    if (managedStop) return managedStop
     const policy = state.policies.find(p => p.projectId === context.projectId)
     if (!policy || !['Read', 'Write', 'Edit', 'MultiEdit'].includes(request.toolName)) return null
-    const input = request.input as { file_path?: unknown; changes?: unknown[] } | null
+    const pathInput = request.input as { file_path?: unknown; changes?: unknown[] } | null
     const paths: string[] = []
-    if (typeof input?.file_path === 'string') paths.push(input.file_path)
-    if (Array.isArray(input?.changes)) for (const raw of input.changes) {
+    if (typeof pathInput?.file_path === 'string') paths.push(pathInput.file_path)
+    if (Array.isArray(pathInput?.changes)) for (const raw of pathInput.changes) {
       const change = raw as { path?: unknown; kind?: { move_path?: unknown; movePath?: unknown } } | null
       for (const p of [change?.path, change?.kind?.move_path, change?.kind?.movePath]) if (typeof p === 'string') paths.push(p)
     }
@@ -174,6 +199,7 @@ export async function createPermissionService(dir: string, reviewer: Reviewer, p
     },
     registry(context, options) {
       return createApprovalRegistry({ ...options,
+        preflight: request => guardManagedServiceStop(context, request) ?? options.preflight?.(request) ?? null,
         finalize: outcome => outcome.decision === 'allow' && (closed || changing || outcome.authorizationVersion !== state.revision)
           ? { decision: 'deny', source: 'system', reason: '授權規則已變更，請重新提出請求' } : outcome,
         validateAllow: async request => {

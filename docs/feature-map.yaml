@@ -21,6 +21,23 @@
     - src/main/agent-view.ts
     - src/main/browser-commands.ts
 
+- name: 專案執行
+  entry: 標題列「執行」設定並管理專案服務，在右側瀏覽器查看
+  requires:
+    - 專案有可執行的服務啟動指令
+  verify:
+    - project-run
+  manual:
+    file: docs/specs/2026-10-05-project-run-design.md
+    items: []
+    note: 全自動實機驗收，結果由控制端補記；Claude 未呼叫停止工具時標示未驗證
+  code:
+    - src/main/project-run/detect.ts
+    - src/main/project-run/runner.ts
+    - src/main/project-run/guard.ts
+    - src/main/project-run/config-store.ts
+    - src/renderer/components/ProjectRunManager.tsx
+
 - name: 測試機與 view_login
   entry: 標題列「測試機」對話框(TestMachinesManager),agent 呼叫 view_login 工具登入
   requires:

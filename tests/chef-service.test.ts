@@ -413,6 +413,20 @@ it.each([
   expect(await r.task()).toMatchObject({ needsReconciliation: false })
   expect((await r.task()).status).not.toBe('blocked')
 })
+it('需要核對而卡住的任務，沒有執行者在跑時可以由使用者取消結束', async () => {
+  const r = await rig(), first = await r.start()
+  r.service.observe(first.id, bgStart('bash1', 'bg1'))
+  r.end(first.id)
+  await vi.waitFor(async () => expect(await r.task()).toMatchObject({ status: 'blocked', needsReconciliation: true }))
+  // 實際經營時：使用者核對後要結束任務，原本取消永遠停在 blocked「停止尚未確認」，唯一出路是接續（會再執行排隊的工作）。
+  await r.service.handle({ action: 'cancel', taskId: (await r.task()).id })
+  const task = await r.task()
+  expect(task.status).toBe('cancelled')
+  expect(task.reason).toContain('未經核對')
+  // 群組訊息曾重複成「使用者停止，已保存進度。使用者停止，已保存進度。先前的…」。
+  const ended = r.milestones.filter(m => m.text.includes('未經核對')).at(-1)!.text
+  expect(ended.match(/使用者停止/g)?.length ?? 0).toBeLessThanOrEqual(1)
+})
 it('背景程序沒有停掉、或 TaskOutput 顯示仍在執行時，結束後仍判定需要核對', async () => {
   for (const extra of [[], [{ kind: 'tool-use' as const, id: 'out1', name: 'TaskOutput', input: { task_id: 'bg1', block: false, timeout: 1 } }, { kind: 'tool-result' as const, id: 'out1', content: '<status>running</status>', isError: false }]]) {
     const r = await rig(), first = await r.start()

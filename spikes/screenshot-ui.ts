@@ -9,7 +9,8 @@ const OUT = join(__dirname, 'ui')
 const RENDERER = join(__dirname, '../out/renderer/index.html')
 // 按鈕文字以 src/renderer/App.tsx 現有的為準：Skills 按鈕沒有中文字（圖示 + 英文字），其餘三個是中文。
 const DIALOGS: readonly { name: string; button: string }[] = [
-  { name: 'skills', button: 'Skills' }, { name: 'permissions', button: '授權' }, { name: 'chef', button: '主廚' }, { name: 'test-machines', button: '測試機' },
+  { name: 'skills', button: 'Skills' }, { name: 'permissions', button: '授權' }, { name: 'chef', button: '主廚' },
+  { name: 'test-machines', button: '測試機' }, { name: 'project-run', button: '執行' },
 ]
 const wait = (ms: number): Promise<void> => new Promise((r) => { setTimeout(r, ms) })
 

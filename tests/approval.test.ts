@@ -52,6 +52,22 @@ describe('createApprovalRegistry', () => {
     await promise
   })
 
+  it('preflight 拒絕在送卡與建立 pending 前結束請求', async () => {
+    const sent: ApprovalRequest[] = []
+    const decision = vi.fn()
+    const registry = createApprovalRegistry({
+      sendRequest: request => sent.push(request),
+      preflight: () => ({ decision: 'deny', source: 'system', reason: 'blocked' }),
+      onDecision: decision,
+    })
+    await expect(registry.request(ask({ toolName: 'Bash' }))).resolves.toEqual({
+      decision: 'deny', source: 'system', reason: 'blocked',
+    })
+    expect(sent).toEqual([])
+    expect(registry.pendingCount()).toBe(0)
+    expect(decision).toHaveBeenCalledOnce()
+  })
+
   it('結局 1：renderer 回 allow', async () => {
     const { registry } = setup()
     const promise = registry.request(ask({ toolName: 'Read', input: { path: 'a.ts' } }))

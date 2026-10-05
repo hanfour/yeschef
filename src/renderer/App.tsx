@@ -24,10 +24,13 @@ import type { PermissionState } from '../shared/permissions.js'
 import { SkillsManager } from './components/SkillsManager.js'
 import { TestMachinesManager } from './components/TestMachinesManager.js'
 import { ErrorIntakeManager } from './components/ErrorIntakeManager.js'
+import { ProjectRunManager } from './components/ProjectRunManager.js'
 import { DialogBoundary } from './components/ErrorBoundary.js'
 import { BrowserSessionsContext } from './browser-context.js'
 import { terminalWebSocketUrl } from './terminal-client.js'
 import './App.css'
+import { BROWSER_TAB_ID } from './previews.js'
+import type { ProjectRunStatus } from '../shared/project-run.js'
 
 export { LIVE_PLACEHOLDER, VIEWING_PLACEHOLDER } from './components/ConversationPane.js'
 
@@ -57,12 +60,34 @@ export function App({ slot }: { readonly slot?: ReactNode } = {}) {
   const [skillsOpen, setSkillsOpen] = useState(false)
   const [permissionsOpen, setPermissionsOpen] = useState(false)
   const [testMachinesOpen, setTestMachinesOpen] = useState(false)
+  const [projectRunOpen, setProjectRunOpen] = useState(false)
+  const [projectRunAutoStart, setProjectRunAutoStart] = useState(false)
   const [errorIntakeOpen, setErrorIntakeOpen] = useState(false)
+  const [projectRunStatuses, setProjectRunStatuses] = useState<Readonly<Record<string, ProjectRunStatus>>>({})
   // active 專案消失時(例如被移除、或切到還沒載入完成)測試機對話框跟著關閉;
   // 不然它繼續把 dragging 卡在 true,原生瀏覽器就再也拿不到擺放矩形了(I1)。
   useEffect(() => {
-    if (projects.active === undefined) setTestMachinesOpen(false)
+    if (projects.active === undefined) {
+      setTestMachinesOpen(false)
+      setProjectRunOpen(false)
+    }
   }, [projects.active])
+  const projectIds = projects.view.projects.map(project => project.id).join('|')
+  useEffect(() => {
+    let alive = true
+    const ids = projectIds === '' ? [] : projectIds.split('|')
+    const unsubscribe = api.onProjectRunUpdate(update => {
+      setProjectRunStatuses(current => ({ ...current, [update.projectId]: update.snapshot }))
+    })
+    Promise.all(ids.map(async id => ({ id, response: await api.manageProjectRun({ action: 'get', projectId: id }) })))
+      .then(results => {
+        if (!alive) return
+        const next = Object.fromEntries(results.flatMap(({ id, response }) => response.kind === 'state' ? [[id, response.snapshot]] : []))
+        setProjectRunStatuses(current => ({ ...next, ...current }))
+      })
+      .catch(() => {})
+    return () => { alive = false; unsubscribe() }
+  }, [api, projectIds])
   const [permissionState, setPermissionState] = useState<PermissionState>()
   useEffect(() => {
     let alive = true
@@ -97,6 +122,11 @@ export function App({ slot }: { readonly slot?: ReactNode } = {}) {
     setDragging(next)
   }, [])
   const previewTabs = usePreviewTabs()
+  const revealBrowser = useCallback((): void => {
+    previewTabs.activate(BROWSER_TAB_ID)
+    if (compact) setCompactPane('preview')
+    else if (panel.collapsed) panel.toggle()
+  }, [compact, panel.collapsed, panel.toggle, previewTabs.activate])
   /**
    * 這個函式是 PreviewContext 的值,每個 ToolCall 都訂閱它;參考一換,所有掛著的工具卡片都重畫
    * (memo 擋不住 context)。所以它不依賴 active 專案與收起狀態,改從 ref 讀當下的值。
@@ -175,6 +205,11 @@ export function App({ slot }: { readonly slot?: ReactNode } = {}) {
                 <button type="button" className="panel-toggle" onClick={() => { panelGroup.current?.hideNow(); setSelectedTaskId(undefined); setChefOpen(true) }}>主廚</button>
                 <button type="button" className="panel-toggle" title={permissionState?.paused ? '自動批准已暫停' : `授權模式：${permissionState?.policies.find(p => p.projectId === projects.active?.id)?.mode ?? 'manual'}`} onClick={() => { panelGroup.current?.hideNow(); setPermissionsOpen(true) }}>授權{permissionState && !permissionState.paused && permissionState.policies.some(p => p.projectId === projects.active?.id && p.mode !== 'manual') ? ' ●' : ''}</button>
                 <button type="button" className="panel-toggle" onClick={() => { panelGroup.current?.hideNow(); setTestMachinesOpen(true) }} disabled={projects.active === undefined}>測試機</button>
+                <button type="button" className="panel-toggle" onClick={() => {
+                  panelGroup.current?.hideNow()
+                  setProjectRunAutoStart(true)
+                  setProjectRunOpen(true)
+                }} disabled={projects.active === undefined}>執行</button>
                 <button type="button" className="panel-toggle error-intake-trigger" aria-label="錯誤收集" title="錯誤收集資料庫" onClick={() => { panelGroup.current?.hideNow(); setErrorIntakeOpen(true) }}>
                   <Icon name="database" /><span>錯誤收集</span>
                 </button>
@@ -187,7 +222,7 @@ export function App({ slot }: { readonly slot?: ReactNode } = {}) {
               </header>
           <div className="workbench">
             <div className="main-column" hidden={compact && compactPane === 'preview'}>
-              <ProjectBar projects={projects} />
+              <ProjectBar projects={projects} projectRunStatuses={projectRunStatuses} />
               {projects.loaded ? (
                 <div className="workspace-conversations">
                 {projects.active?.available && <WorkspaceHistory api={api} projects={projects} />}
@@ -215,7 +250,7 @@ export function App({ slot }: { readonly slot?: ReactNode } = {}) {
               ) : null}
             </div>
             {panel.collapsed || compact ? null : <PanelDivider onDragging={onDragging} />}
-            <PanelGroup ref={panelGroup} dragging={dragging || skillsOpen || permissionsOpen || chefOpen || testMachinesOpen || errorIntakeOpen} api={api} collapsed={panelHidden}
+          <PanelGroup ref={panelGroup} dragging={dragging || skillsOpen || permissionsOpen || chefOpen || testMachinesOpen || projectRunOpen || errorIntakeOpen} api={api} collapsed={panelHidden}
               previews={previewTabs.tabs.previews} activeId={previewTabs.tabs.activeId}
               projects={projects.view.projects}
               onActivate={previewTabs.activate} onClose={previewTabs.close}
@@ -228,6 +263,7 @@ export function App({ slot }: { readonly slot?: ReactNode } = {}) {
       {permissionsOpen && <DialogBoundary onClose={() => setPermissionsOpen(false)}><PermissionManager api={api} projects={projects.view.projects} activeId={projects.view.activeId} onClose={() => setPermissionsOpen(false)} onChange={setPermissionState} /></DialogBoundary>}
       {skillsOpen && <DialogBoundary onClose={() => setSkillsOpen(false)}><SkillsManager api={api} onClose={() => setSkillsOpen(false)} /></DialogBoundary>}
       {testMachinesOpen && projects.active !== undefined && <DialogBoundary key={projects.active.id} onClose={() => setTestMachinesOpen(false)}><TestMachinesManager api={api} projectId={projects.active.id} projectName={projects.active.name} onClose={() => setTestMachinesOpen(false)} /></DialogBoundary>}
+      {projectRunOpen && projects.active !== undefined && <DialogBoundary key={projects.active.id} onClose={() => { setProjectRunOpen(false); setProjectRunAutoStart(false) }}><ProjectRunManager api={api} projectId={projects.active.id} projectName={projects.active.name} autoStart={projectRunAutoStart} onRevealBrowser={revealBrowser} onClose={() => { setProjectRunOpen(false); setProjectRunAutoStart(false) }} /></DialogBoundary>}
       {errorIntakeOpen && <DialogBoundary key={projects.active?.id ?? 'none'} onClose={() => setErrorIntakeOpen(false)}><ErrorIntakeManager api={api} project={projects.active} onClose={() => setErrorIntakeOpen(false)} /></DialogBoundary>}
       <StatusBar
         {...(shownCost === undefined ? {} : { cost: shownCost })}

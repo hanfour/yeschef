@@ -39,7 +39,13 @@ import { createPeerService } from './peer/service.js'
 import { createGroupStore } from './group/store.js'
 import { createGroupService, type GroupChef } from './group/service.js'
 import { createGroupIpcHandler } from './group/ipc.js'
-import { MSG as GROUP_MSG } from './group/messages.js'
+import { MSG as GROUP_MSG, labelFor } from './group/messages.js'
+import { GENERAL_THREAD_ID } from '../shared/group.js'
+import { createProjectRunConfigStore } from './project-run/config-store.js'
+import { discoverProjectRunCandidates } from './project-run/discovery.js'
+import { createProjectRunIpcHandler } from './project-run/ipc.js'
+import { createProjectRunNodeAdapters } from './project-run/node-adapters.js'
+import { createProjectRunRunner } from './project-run/runner.js'
 import { app, BaseWindow, WebContentsView, clipboard, dialog, ipcMain, powerSaveBlocker, safeStorage, shell } from 'electron'
 import { execFile } from 'node:child_process'
 import { createGitRun } from './git-run.js'
@@ -80,7 +86,7 @@ import { migrateYesChefData, PROJECTS_FILE } from './data-migration.js'
 import { createProjectsService, type ProjectsService } from './projects-service.js'
 import type { WorktreeDeps } from './worktree.js'
 import { initializeGitRepoState, registerProjectsIpc } from './projects-ipc.js'
-import { closeInactiveChefTabs, conversationDir, findProject, findProjectByTab, foregroundConversationId, removedProjectIds, setShutdown } from './projects-state.js'
+import { activeConversationId, closeInactiveChefTabs, conversationDir, conversationTabs, findProject, findProjectByTab, focusTab, foregroundConversationId, openConversationTab, removedProjectIds, setActive, setShutdown } from './projects-state.js'
 import { VIEW_TOOL_SERVER_NAME } from '../shared/view-tools.js'
 
 /** 狀態檔還是空的時候,用這個環境變數補第一個專案(D 之前唯一的專案目錄,沿用當種子)。 */
@@ -388,6 +394,82 @@ export async function createWindow(): Promise<BaseWindow> {
     logError,
   })
 
+  let group: ReturnType<typeof createGroupService> | undefined
+  let currentWorkerLabel: (projectId: string) => string = () => '目前沒有工作者'
+  const projectRunFiles = createProjectRunNodeAdapters(app.getPath('userData'))
+  const projectRunConfigStore = createProjectRunConfigStore(join(app.getPath('userData'), 'project-run'))
+  const projectRunRunner = createProjectRunRunner({
+    ...projectRunFiles,
+    shell: process.env['SHELL'] ?? '/bin/sh',
+    openInBrowser: async (projectId, url) => { await openProjectRunBrowser(projectId, url) },
+    postUnexpectedExit: async (projectId, exit) => {
+      group?.write({
+        projectId,
+        threadId: GENERAL_THREAD_ID,
+        from: { kind: 'system' },
+        kind: 'text',
+        text: `受管服務非預期結束（工作者：${currentWorkerLabel(projectId)}；結束：${exit.signal ?? exit.code ?? '未知'}），YesChef 正在自動重啟。`,
+      })
+    },
+    logError,
+  })
+
+  function conversationForProjectRun(projectId: string): string | undefined {
+    let project = findProject(service.state(), projectId)
+    if (project === undefined) return undefined
+    if (conversationTabs(project).length === 0) {
+      service.update(state => openConversationTab(state, projectId, { tabId: service.newId(), threadId: service.newId() }, service.now()))
+      project = findProject(service.state(), projectId)
+    }
+    if (project === undefined) return undefined
+    const conversationId = activeConversationId(project)
+    service.update(state => {
+      const now = service.now()
+      return setActive(focusTab(state, projectId, conversationId, now), projectId, now)
+    })
+    return conversationId
+  }
+
+  async function openProjectRunBrowser(projectId: string, url: string): Promise<void> {
+    const conversationId = conversationForProjectRun(projectId)
+    if (conversationId === undefined) throw new Error('找不到專案的對話分頁')
+    await browserSessions.ensure(conversationId)
+    browserSessions.show(conversationId)
+    const result = await browserCommands.run({ kind: 'navigate', url })
+    if (!result.ok) throw new Error(result.message)
+  }
+
+  async function refreshProjectRunBrowser(projectId: string): Promise<void> {
+    const conversationId = conversationForProjectRun(projectId)
+    if (conversationId === undefined) throw new Error('找不到專案的對話分頁')
+    await browserSessions.ensure(conversationId)
+    browserSessions.show(conversationId)
+    const result = await browserCommands.run({ kind: 'reload' })
+    if (!result.ok) throw new Error(result.message)
+  }
+
+  const projectRunHandler = createProjectRunIpcHandler({
+    isTrustedSender: sender => sender === conversationView.webContents,
+    projectRoot: projectId => service.rootPathOf(projectId),
+    projectName: projectId => findProject(service.state(), projectId)?.name,
+    configStore: projectRunConfigStore,
+    runner: projectRunRunner,
+    discover: discoverProjectRunCandidates,
+    readLog: projectRunFiles.readLog,
+    logPath: projectRunFiles.logPath,
+    openInBrowser: async projectId => {
+      const url = projectRunRunner.snapshot(projectId).url
+      if (url === undefined) throw new Error('服務尚未就緒')
+      await openProjectRunBrowser(projectId, url)
+    },
+    refreshBrowser: refreshProjectRunBrowser,
+    openLog: path => shell.openPath(path),
+    logError,
+  })
+  const unsubscribeProjectRun = projectRunRunner.subscribe((projectId, snapshot, logs) => {
+    sendToRenderer(IPC.projectRunUpdate, { projectId, snapshot, logs: logs.slice(-2000) })
+  })
+
   // 每個對話一份 MCP server;瀏覽器本身等第一次工具呼叫才建(規格 §4.3)。
   // grok 那條路再多一層 localhost HTTP,第一次要 mcpServers 時才 listen(grok 規格 §6)。
   const runtimeFor = (projectId: string, cwd: string, conversationId: string, provider: Provider): ProjectRuntime => {
@@ -472,7 +554,11 @@ export async function createWindow(): Promise<BaseWindow> {
   })
   if (!win.isDestroyed()) remoteClients.start()
   const reviewDir = join(app.getPath('userData'), 'permission-reviewer')
-  const permissions = await mkdir(reviewDir, { recursive: true, mode: 0o700 }).then(() => createPermissionService(join(app.getPath('userData'), 'permissions'), createPermissionReviewer(query, reviewDir), id => service.rootPathOf(id) !== undefined, logError, async options => dialog.showSaveDialog(win, options))).catch(error => { logError(toError(error)); return undefined })
+  const permissions = await mkdir(reviewDir, { recursive: true, mode: 0o700 }).then(() => createPermissionService(
+    join(app.getPath('userData'), 'permissions'), createPermissionReviewer(query, reviewDir),
+    id => service.rootPathOf(id) !== undefined, logError,
+    async options => dialog.showSaveDialog(win, options), projectId => projectRunRunner.managedServices(projectId),
+  )).catch(error => { logError(toError(error)); return undefined })
   // 測試機規格 §3:密碼經 safeStorage 加密後存在 userData,每個專案一檔。
   const testMachines = createTestMachinesService({
     dir: join(app.getPath('userData'), 'test-machines'),
@@ -489,6 +575,8 @@ export async function createWindow(): Promise<BaseWindow> {
   const unsubscribeTestMachines = service.subscribe((next, prev) => {
     for (const id of removedProjectIds(prev, next)) {
       testMachines.removeProject(id).catch((err: unknown) => { logError(toError(err)) })
+      projectRunConfigStore.removeProject(id).catch((err: unknown) => { logError(toError(err)) })
+      projectRunRunner.stop(id).catch((err: unknown) => { logError(toError(err)) })
     }
   })
   const attachments = createAttachments(join(app.getPath('userData'), 'attachments'), async () => {
@@ -501,7 +589,6 @@ export async function createWindow(): Promise<BaseWindow> {
   let bridge: IpcBridge
   const chefDir = join(app.getPath('userData'), 'chef')
   // 群組頻道(群組規格 §3.2):訊息放 userData,跟同伴信箱同樣的理由,專案目錄可能被 git clean 清掉。
-  let group: ReturnType<typeof createGroupService> | undefined
   const groupStore = createGroupStore(join(app.getPath('userData'), 'yeschef-group'), logError)
   // Chef 的 grok 模型與歷史清單共用同一份 catalog(grok 規格 §8.2),所以先建好再傳進去。
   const grokCatalog = createGrokCatalog({ logError })
@@ -520,6 +607,11 @@ export async function createWindow(): Promise<BaseWindow> {
     onTaskEnded: task => errorIntake.completeErrorFix(task),
     logError,
   }).catch(error => { logError(toError(error)); return undefined })
+  currentWorkerLabel = projectId => {
+    const task = [...(chef?.tasksOf(projectId) ?? [])].reverse().find(candidate => ['running', 'stopping'].includes(candidate.status))
+    const attempt = task?.attempts.filter(candidate => ['running', 'stopping'].includes(candidate.status)).at(-1)
+    return task === undefined || attempt === undefined ? '目前沒有工作者' : labelFor(task, attempt)
+  }
   const runningChefWorkersByTask = new Map(service.state().projects.flatMap(project =>
     (chef?.tasksOf(project.id) ?? []).map(task => [
       task.id,
@@ -630,6 +722,7 @@ export async function createWindow(): Promise<BaseWindow> {
     isTrustedSender: (sender) => sender === conversationView.webContents,
     handle: (raw) => testMachines.handle(raw),
   }))
+  ipcMain.handle(IPC.projectRun, projectRunHandler)
   ipcMain.handle(ERROR_INTAKE_CHANNEL, createErrorIntakeIpcHandler({
     isTrustedSender: (sender) => sender === conversationView.webContents,
     handle: (raw) => {
@@ -670,10 +763,12 @@ export async function createWindow(): Promise<BaseWindow> {
     ipcMain.removeHandler(CHEF_CHANNEL)
     ipcMain.removeHandler(PERMISSIONS_CHANNEL)
     ipcMain.removeHandler(TEST_MACHINES_CHANNEL)
+    ipcMain.removeHandler(IPC.projectRun)
     ipcMain.removeHandler(GROUP_CHANNEL)
     ipcMain.removeHandler(SKILLS_CHANNEL)
     ipcMain.removeHandler(WORKTREE_MERGE_CHANNEL)
     unsubscribeTestMachines()
+    unsubscribeProjectRun()
     void sharedSkills?.dispose().catch(error => logError(toError(error)))
   })
 
@@ -755,7 +850,9 @@ export async function createWindow(): Promise<BaseWindow> {
     quitting = true
     event.preventDefault()
     const state = service.state()
-    Promise.resolve(chef?.dispose()).catch(error => logError(toError(error))).then(() => store.save(setShutdown(state, state.projects.map((p) => p.id))))
+    Promise.resolve(chef?.dispose()).catch(error => logError(toError(error)))
+      .then(() => projectRunRunner.stopAll())
+      .then(() => store.save(setShutdown(state, state.projects.map((p) => p.id))))
       .catch((err: unknown) => {
         logError(toError(err))
       })

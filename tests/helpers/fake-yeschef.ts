@@ -3,6 +3,7 @@ import type { Projects } from '../../src/renderer/hooks/useProjects.js'
 import type { PreviewReadResult, PeerStatePayload, EventsBatchPayload, SessionStatePayload, ApprovalAskPayload, ApprovalReplyPayload, ApprovalSettledPayload, SessionSummary, YesChefApi } from '../../src/shared/ipc.js'
 import type { BrowserCommandResult, BrowserSessionEntry, BrowserStatePayload } from '../../src/shared/browser-ipc.js'
 import type { GroupMessagesPayload } from '../../src/shared/group.js'
+import type { ProjectRunUpdate } from '../../src/shared/project-run.js'
 import type { ProjectsView, ProjectView, TabEntry } from '../../src/shared/projects.js'
 import type { SessionState } from '../../src/shared/session-state.js'
 import type { Event } from '../../src/shared/events.js'
@@ -84,6 +85,7 @@ export function createFakeYesChef(
   const browserStateListeners = new Set<(state: BrowserStatePayload) => void>()
   const browserSessionsListeners = new Set<(sessions: readonly BrowserSessionEntry[]) => void>()
   const groupListeners = new Set<(payload: GroupMessagesPayload) => void>()
+  const projectRunListeners = new Set<(payload: ProjectRunUpdate) => void>()
   const replies: ApprovalReplyPayload[] = []
   const calls: string[] = []
   // getProjects 回「目前這一份」而不是建構時那一份:App 測試 render 之後立刻 emitProjects,
@@ -106,6 +108,10 @@ export function createFakeYesChef(
     manageTestMachines: async () => ({ kind: 'state', revision: 0, machines: [] }),
     manageErrorIntake: async () => ({ kind: 'settings', settings: { host: '', port: 3306, database: '', tls: true, adminUsername: '', hasAdminPassword: false, hasAppPassword: false, schemaVersion: null, packageSource: '@yeschef/error-intake' } }),
     manageGroup: async () => ({ kind: 'state', messages: [], threads: [] }),
+    manageProjectRun: async request => ({
+      kind: 'state', candidates: [], snapshot: { projectId: request.projectId, state: 'stopped', restarted: false }, logs: [], logPath: '',
+    }),
+    onProjectRunUpdate: on(projectRunListeners),
     onGroupMessages: on(groupListeners),
     openGroup: (id) => { calls.push(`openGroup:${id}`) },
     worktreeMerge: async () => ({ kind: 'error', message: '測試未設定合併' }),

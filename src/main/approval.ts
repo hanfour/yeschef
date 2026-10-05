@@ -64,6 +64,7 @@ export interface ApprovalOutcome {
 export type SendApprovalRequest = (request: ApprovalRequest) => void
 
 export interface ApprovalRegistryOptions {
+  readonly preflight?: (request: ApprovalRequest) => ApprovalOutcome | null
   readonly finalize?: (outcome: ApprovalOutcome) => ApprovalOutcome
   readonly validateAllow?: (request: ApprovalRequest) => Promise<ApprovalOutcome | null>
   readonly evaluate?: (request: ApprovalRequest, signal: AbortSignal, progress: (status: 'checking' | 'reviewing' | 'manual', reason: string) => void) => Promise<ApprovalOutcome | null>
@@ -135,18 +136,26 @@ export function createApprovalRegistry(options: ApprovalRegistryOptions): Approv
 
   const pending = new Map<string, PendingEntry>()
 
+  function finalize(outcome: ApprovalOutcome): ApprovalOutcome {
+    if (!options.finalize) return outcome
+    try { return options.finalize(outcome) }
+    catch { return { decision: 'deny', source: 'system', reason: '授權最終驗證失敗' } }
+  }
+
+  function recordDecision(request: ApprovalRequest, outcome: ApprovalOutcome): void {
+    try { options.onDecision?.(request, outcome) } catch { /* best effort */ }
+  }
+
   /** 唯一的了結入口：清計時器、從表裡刪掉、resolve。順序不能反過來。 */
   function settle(requestId: string, outcome: ApprovalOutcome): boolean {
     const entry = pending.get(requestId)
     if (entry === undefined) return false
-    if (options.finalize) {
-      try { outcome = options.finalize(outcome) } catch { outcome = { decision: 'deny', source: 'system', reason: '授權最終驗證失敗' } }
-    }
+    outcome = finalize(outcome)
     if (entry.timer !== undefined) clearTimeout(entry.timer)
     pending.delete(requestId)
     entry.controller.abort()
     // Audit failure cannot strand the provider's approval promise.
-    try { options.onDecision?.(entry.request, outcome) } catch { /* best effort */ }
+    recordDecision(entry.request, outcome)
     entry.resolve(outcome)
     options.onSettled?.(requestId)
     return true
@@ -156,6 +165,17 @@ export function createApprovalRegistry(options: ApprovalRegistryOptions): Approv
     const requestId = createRequestId()
 
     return new Promise<ApprovalOutcome>((resolve) => {
+      const request: ApprovalRequest = { ...ask, requestId }
+      let preflight: ApprovalOutcome | null = null
+      try { preflight = options.preflight?.(request) ?? null }
+      catch { preflight = { decision: 'deny', source: 'system', reason: '授權前置驗證失敗' } }
+      if (preflight !== null) {
+        const outcome = finalize(preflight)
+        recordDecision(request, outcome)
+        resolve(outcome)
+        return
+      }
+
       // 逾時是安全的方向，不是例外：規格 §8「批准逾時 → 拒絕，並在對話裡
       // 留下可見記錄」。掛住不回覆比拒絕危險：掛住會讓 query() 整條卡死，
       // 使用者連「這次不行」都看不到。
@@ -168,7 +188,6 @@ export function createApprovalRegistry(options: ApprovalRegistryOptions): Approv
         })
       }, timeoutMs)
 
-      const request: ApprovalRequest = { ...ask, requestId }
       const { validateEvidence: _validate, ...publicRequest } = request
       const controller = new AbortController()
       pending.set(requestId, { resolve, ...(timer === undefined ? {} : { timer }), request, controller })

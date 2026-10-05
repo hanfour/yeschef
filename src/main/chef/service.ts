@@ -428,12 +428,14 @@ export async function createChefService(deps: ChefDeps) {
     task.cancelRequested = true; task.status = 'stopping'; task.reason = reason; await save().catch(error => deps.logError(error as Error))
     const active = [...task.attempts].reverse().find(a => ['running','stopping'].includes(a.status))
     if (active && draining.has(task.id) && !handles.has(active.workerId)) { block(task, `${reason} 執行者仍在啟動，等待停止確認。`, true); await save(); return }
-    const confirmed = active ? await stop(active) : !task.needsReconciliation
+    // 沒有執行者在跑時，使用者取消就是要結束任務；原本會因「需要核對」永遠停在 blocked，只能接續（會再執行排隊的工作）。
+    const unverified = !active && task.needsReconciliation
+    const confirmed = active ? await stop(active) : true
     if (active) { active.status = 'blocked'; active.endedAt = now() }
     task.needsReconciliation = !confirmed || Boolean(active && (active.pendingTools.length || active.backgroundWork))
     task.status = task.needsReconciliation ? 'blocked' : 'cancelled'
-    task.reason = !confirmed ? '停止尚未確認；不會自動啟動下一個執行者。' : task.needsReconciliation ? '已停止；仍有工具結果需要核對，進度已保存。' : reason
-    const endReason = task.reason === reason ? reason : `${reason}${reason.endsWith('。') ? '' : '。'}${task.reason}`
+    task.reason = !confirmed ? '停止尚未確認；不會自動啟動下一個執行者。' : task.needsReconciliation ? '已停止；仍有工具結果需要核對，進度已保存。' : unverified ? `${reason}${reason.endsWith('。') ? '' : '。'}先前的工具結果未經核對。` : reason
+    const endReason = task.reason.startsWith(reason) ? task.reason : `${reason}${reason.endsWith('。') ? '' : '。'}${task.reason}`
     if (active) active.reason = endReason
     groupWrite(task, 'blocked', GROUP_MSG.taskEnded(task.status, endReason, task.needsReconciliation)); await save()
   }

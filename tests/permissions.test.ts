@@ -10,11 +10,15 @@ import type { Reviewer, ReviewResult } from '../src/main/permissions/reviewer.js
 const roots: string[] = []
 const services: Awaited<ReturnType<typeof createPermissionService>>[] = []
 afterEach(async () => { for (const service of services.splice(0)) await service.dispose(); for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }); vi.useRealTimers() })
-async function rig(reviewer: Reviewer = async input => ({ requestHash: input.requestHash, verdict: 'allow', reason: '符合目的' }), showSaveDialog?: ShowSaveDialog) {
+async function rig(
+  reviewer: Reviewer = async input => ({ requestHash: input.requestHash, verdict: 'allow', reason: '符合目的' }),
+  showSaveDialog?: ShowSaveDialog,
+  managedServices: () => readonly { pid: number; pgid: number; processName: string; port: number }[] = () => [],
+) {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'yeschef-permission-'))); roots.push(root)
   const cwd = join(root, 'project'); await mkdir(cwd)
   const dir = join(root, 'settings')
-  const service = await createPermissionService(dir, reviewer, id => id === 'p', () => {}, showSaveDialog)
+  const service = await createPermissionService(dir, reviewer, id => id === 'p', () => {}, showSaveDialog, managedServices)
   services.push(service)
   const sent: ApprovalRequest[] = []
   const registry = service.registry({ projectId: 'p', conversationId: 'c', cwd }, { sendRequest: r => sent.push(r), timeoutMs: 1000 })
@@ -33,6 +37,29 @@ it('未授權預設人工，存檔後工作目錄內寫檔自動允許且重啟�
   await r.save('rules'); expect(await r.registry.request(r.ask())).toMatchObject({ decision: 'allow', source: 'rule' })
   const reloaded = await createPermissionService(r.dir, async () => { throw Error('no model') }, () => true, () => {}); services.push(reloaded)
   expect(await reloaded.handle({ action: 'get' })).toMatchObject({ kind: 'state', state: { revision: 1, policies: [{ mode: 'rules' }] } })
+})
+
+it('共同批准關卡直接拒絕 Claude/Codex Bash 與 Grok rawInput 的受管服務停止指令', async () => {
+  const message = '這是 YesChef 管理的執行中服務，請使用者在『執行』面板操作'
+  const r = await rig(undefined, undefined, () => [{ pid: 8123, pgid: 8100, processName: 'node', port: 3000 }])
+  for (const request of [
+    { toolName: 'Bash', toolUseId: 'claude', input: { command: 'kill -9 8123' } },
+    { toolName: 'Bash', toolUseId: 'codex', input: { command: 'lsof -ti :3000 | xargs kill' } },
+    { toolName: '執行 npm run dev', toolUseId: 'grok', input: { command: 'fuser -k 3000/tcp' } },
+  ]) {
+    await expect(r.registry.request(request)).resolves.toEqual({ decision: 'deny', source: 'system', reason: message })
+  }
+  expect(r.sent).toHaveLength(0)
+})
+
+it('沒有受管服務時 Bash 的一般批准流程不變', async () => {
+  const r = await rig()
+  const pending = r.registry.request({ toolName: 'Bash', toolUseId: 'query', input: { command: 'lsof -i :3000' } })
+  await vi.waitFor(() => expect(r.sent).toHaveLength(1))
+  r.registry.reply(r.sent[0]!.requestId, 'deny')
+  await expect(pending).resolves.toMatchObject({ decision: 'deny' })
+  const response = await r.service.handle({ action: 'get' })
+  expect(response).toMatchObject({ kind: 'state', audit: [expect.objectContaining({ decision: 'deny', source: 'user' })] })
 })
 
 it('載入的舊 MCP 審核紀錄以 YesChef 工具名稱呈現', async () => {

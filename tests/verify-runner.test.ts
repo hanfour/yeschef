@@ -14,10 +14,10 @@ const { flowCommand, listFlows, parseArgs } = await import('../spikes/verify.js'
 const { readFileSync } = await import('node:fs')
 const mockedReadFileSync = vi.mocked(readFileSync)
 
-const FLOW_NAMES = ['browser', 'group', 'error-intake', 'error-pull', 'chef-ui-check', 'grok', 'screenshots', 'contrast', 'sessions', 'memory'] as const
+const FLOW_NAMES = ['browser', 'group', 'project-run', 'error-intake', 'error-pull', 'chef-ui-check', 'grok', 'screenshots', 'contrast', 'sessions', 'memory'] as const
 
 describe('listFlows', () => {
-  it('剛好十個穩定名字,順序與內容固定', () => {
+  it('剛好十一個穩定名字,順序與內容固定', () => {
     expect(listFlows().map((f) => f.name)).toEqual([...FLOW_NAMES])
   })
 
@@ -43,6 +43,13 @@ describe('listFlows', () => {
     expect(flow?.description).toContain('codex')
   })
 
+  it('project-run 開 Electron 並說明專案執行驗收範圍', () => {
+    const flow = listFlows().find((item) => item.name === 'project-run')
+    expect(flow?.opensElectron).toBe(true)
+    expect(flow?.costsGrokQuota).toBe(false)
+    expect(flow?.description).toContain('自動重啟')
+  })
+
   it('error-pull 開 Electron 並說明驗收目的與模型額度', () => {
     const flow = listFlows().find((item) => item.name === 'error-pull')
     expect(flow?.opensElectron).toBe(true)
@@ -63,9 +70,9 @@ describe('listFlows', () => {
     expect(flow?.description).toContain('codex')
   })
 
-  it('browser、group、error-intake、error-pull、screenshots、sessions 會開 Electron 視窗;contrast、grok、memory 不會', () => {
+  it('browser、group、project-run、error-intake、error-pull、screenshots、sessions 會開 Electron 視窗;contrast、grok、memory 不會', () => {
     const opens = listFlows().filter((f) => f.opensElectron).map((f) => f.name).sort()
-    expect(opens).toEqual(['browser', 'chef-ui-check', 'error-intake', 'error-pull', 'group', 'screenshots', 'sessions'])
+    expect(opens).toEqual(['browser', 'chef-ui-check', 'error-intake', 'error-pull', 'group', 'project-run', 'screenshots', 'sessions'])
   })
 })
 
@@ -77,6 +84,7 @@ describe('flowCommand', () => {
   it('每個穩定名字都能在 package.json 裡找到對應的 spike:* script,字串完全相同', () => {
     const pairs: readonly (readonly [typeof FLOW_NAMES[number], string])[] = [
       ['browser', 'spike:acceptance'], ['group', 'spike:group'], ['error-intake', 'spike:error-intake'], ['error-pull', 'spike:error-pull'], ['grok', 'spike:grok'], ['screenshots', 'spike:screenshots'],
+      ['project-run', 'spike:project-run'],
       ['chef-ui-check', 'spike:chef-ui-check'],
       ['contrast', 'spike:contrast'], ['sessions', 'spike:sessions'], ['memory', 'spike:memory'],
     ]

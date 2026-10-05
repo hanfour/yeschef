@@ -35,6 +35,8 @@ describe('IPC 頻道名稱與契約一致', () => {
       peerCancel: 'peer:cancel',
       browserBounds: 'layout:browser-bounds',
       browserCommand: 'browser:command',
+      projectRun: 'projectRun:manage',
+      projectRunUpdate: 'projectRun:update',
       browserState: 'browser:state',
       browserSessions: 'browser:sessions',
       browserGet: 'browser:get',

@@ -1,0 +1,27 @@
+.project-run-dialog { width: min(820px, calc(100vw - 32px)); max-height: min(760px, calc(100vh - 32px)); }
+.project-run-dialog .skills-heading h1 { letter-spacing: 0; }
+.project-run-settings, .project-run-panel { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.project-run-settings label { display: flex; flex-direction: column; gap: 4px; color: var(--label-2); font-size: var(--text-s); }
+.project-run-settings textarea { resize: vertical; font-family: var(--font-mono); font-size: var(--text-s); }
+.project-run-settings .project-run-check { flex-direction: row; align-items: center; gap: 8px; color: var(--label); }
+.project-run-check input { flex: none; }
+.project-run-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(120px, .5fr); gap: 12px; }
+.project-run-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.project-run-error, .project-run-conflict { margin: 0; color: var(--danger); font-size: var(--text-s); overflow-wrap: anywhere; }
+.project-run-conflict { color: var(--warning); }
+.project-run-status-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; min-height: 24px; color: var(--label-2); font-size: var(--text-s); }
+.project-run-status-row strong { color: var(--label); }
+.project-run-status-dot { width: 9px; height: 9px; flex: none; border-radius: 50%; background: var(--label-3); }
+.project-run-status-dot.running { background: var(--success); }
+.project-run-status-dot.starting, .project-run-status-dot.restarting { background: var(--warning); }
+.project-run-status-dot.failed { background: var(--danger); }
+.project-run-url { color: var(--accent); font-family: var(--font-mono); font-size: var(--text-s); overflow-wrap: anywhere; }
+.project-run-restarted { display: flex; align-items: center; gap: 10px; margin: 0; color: var(--success); font-size: var(--text-s); }
+.project-run-log-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding-top: 4px; border-top: 1px solid var(--separator); }
+.project-run-log-heading h2 { margin: 0; color: var(--label-2); font-size: var(--text-s); font-weight: 600; }
+.project-run-log { min-height: 120px; max-height: 270px; overflow: auto; margin: 0; padding: 10px; border-radius: var(--radius-s); background: var(--bg-raised); color: var(--label); font-size: var(--text-xs); line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+  .project-run-dialog { width: calc(100vw - 20px); max-height: calc(100vh - 20px); padding: 12px; }
+  .project-run-fields { grid-template-columns: minmax(0, 1fr); }
+  .project-run-log-heading { align-items: flex-start; flex-direction: column; }
+}

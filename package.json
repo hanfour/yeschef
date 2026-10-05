@@ -26,6 +26,7 @@
     "postinstall": "node scripts/fix-node-pty.mjs",
     "spike:acceptance": "esbuild spikes/acceptance-browser.ts --bundle --platform=node --format=cjs --external:electron --outfile=.spike-out/acceptance-browser.cjs && cp -R spikes/fixtures .spike-out/ && electron .spike-out/acceptance-browser.cjs",
     "spike:group": "npm run build && esbuild spikes/group-acceptance.ts --bundle --platform=node --format=cjs --packages=external --outfile=.spike-out/group-acceptance.cjs && node .spike-out/group-acceptance.cjs",
+    "spike:project-run": "npm run build && node --experimental-strip-types spikes/project-run-acceptance.ts",
     "spike:error-intake": "npm run build && esbuild spikes/error-intake-acceptance.ts --bundle --platform=node --format=cjs --packages=external --outfile=.spike-out/error-intake-acceptance.cjs && esbuild spikes/error-intake-browser-window.ts --bundle --platform=node --format=cjs --external:electron --outfile=.spike-out/error-intake-browser-window.cjs && node .spike-out/error-intake-acceptance.cjs",
     "spike:error-pull": "npm run build && esbuild spikes/error-pull-acceptance.ts --bundle --platform=node --format=cjs --packages=external --outfile=.spike-out/error-pull-acceptance.cjs && node .spike-out/error-pull-acceptance.cjs",
     "spike:chef-ui-check": "npm run build && esbuild spikes/chef-ui-check-acceptance.ts --bundle --platform=node --format=cjs --packages=external --outfile=.spike-out/chef-ui-check-acceptance.cjs && node .spike-out/chef-ui-check-acceptance.cjs",

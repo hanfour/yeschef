@@ -8,6 +8,7 @@ import { ERROR_INTAKE_CHANNEL, ErrorIntakeRequestSchema, ErrorIntakeResponseSche
 import { GROUP_CHANNEL, GroupRequestSchema, GroupResponseSchema, parseGroupMessagesPayload } from '../shared/group.js'
 import type { GroupOpenPayload } from '../shared/group.js'
 import { WORKTREE_MERGE_CHANNEL, WorktreeMergeRequestSchema, WorktreeMergeResponseSchema } from '../shared/worktree-merge.js'
+import { ProjectRunRequestSchema, ProjectRunResponseSchema, parseProjectRunUpdate } from '../shared/project-run.js'
 import {
   parseBrowserCommandResult, parseBrowserSessions, parseBrowserSnapshot, parseBrowserState, type BrowserCommand,
 } from '../shared/browser-ipc.js'
@@ -130,6 +131,11 @@ const api: YesChefApi = {
       return result.success ? result.data : null
     }, '群組回傳格式不正確')
   },
+  manageProjectRun: payload => invokeParsed(IPC.projectRun, ProjectRunRequestSchema.parse(payload), raw => {
+    const result = ProjectRunResponseSchema.safeParse(raw)
+    return result.success ? result.data : null
+  }, '專案執行回傳格式不正確'),
+  onProjectRunUpdate: cb => subscribe(IPC.projectRunUpdate, parseProjectRunUpdate, cb),
   onGroupMessages: (cb) => subscribe(IPC.groupMessages, parseGroupMessagesPayload, cb),
   openGroup: (projectId) => {
     ipcRenderer.send(IPC.groupOpen, { projectId } satisfies GroupOpenPayload)

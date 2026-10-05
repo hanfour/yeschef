@@ -29,6 +29,8 @@ const FLOWS: readonly FlowMeta[] = [
     description: '測試機 view_login 與每對話瀏覽器的實機驗收' },
   { name: 'group', scriptName: 'spike:group', opensElectron: true, costsGrokQuota: false,
     description: '群組頻道七項實機驗收，會用 claude 與 codex 額度，不用 Grok' },
+  { name: 'project-run', scriptName: 'spike:project-run', opensElectron: true, costsGrokQuota: false,
+    description: '專案執行全自動實機驗收：右側服務、檔案重啟、停止防護、外部 kill 自動重啟；Claude 未呼叫工具時標示未驗證' },
   { name: 'error-intake', scriptName: 'spike:error-intake', opensElectron: true, costsGrokQuota: false,
     description: '錯誤收集實機驗收：執行前需設定 TARGET_REPO、TARGET_GITHUB_REPO 與 TARGET_ENV_FILE，會用 claude 與 codex 額度' },
   { name: 'error-pull', scriptName: 'spike:error-pull', opensElectron: true, costsGrokQuota: false,

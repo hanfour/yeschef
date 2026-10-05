@@ -2,6 +2,7 @@
 import { contextBridge } from 'electron'
 import type { YesChefApi } from '../src/shared/ipc.js'
 import type { GroupMessage, GroupMessagesPayload, GroupThread } from '../src/shared/group.js'
+import type { ProjectRunUpdate } from '../src/shared/project-run.js'
 import { ASK, BROWSER_SESSIONS, BROWSER_STATE, EVENTS, PROJECTS, SESSION_STATE, SESSIONS, CONVERSATION } from './fixtures/ui-fixture.js'
 
 const later = (fn: () => void): void => { setTimeout(fn, 0) }
@@ -42,6 +43,7 @@ let fixtureProjects = {
 }
 const projectListeners = new Set<(projects: typeof PROJECTS) => void>()
 const groupListeners = new Set<(payload: GroupMessagesPayload) => void>()
+const projectRunListeners = new Set<(payload: ProjectRunUpdate) => void>()
 
 function addGroupTab(projectId: string): void {
   fixtureProjects = {
@@ -88,6 +90,10 @@ const api: YesChefApi = {
   manageGroup: async (request) => request.action === 'get'
     ? { kind: 'state', messages: GROUP_MESSAGES, threads: GROUP_THREADS }
     : { kind: 'sent', threadId: request.threadId },
+  manageProjectRun: async request => ({
+    kind: 'state', candidates: [], snapshot: { projectId: request.projectId, state: 'stopped', restarted: false }, logs: [], logPath: '',
+  }),
+  onProjectRunUpdate: cb => { projectRunListeners.add(cb); return () => { projectRunListeners.delete(cb) } },
   onGroupMessages: (cb) => {
     groupListeners.add(cb)
     later(() => {

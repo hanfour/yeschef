@@ -2,7 +2,7 @@
 import { afterEach, describe, it, expect } from 'vitest'
 import { cleanup, render, screen, fireEvent } from '@testing-library/react'
 import { ProjectBar } from '../src/renderer/components/ProjectBar.js'
-import { EMPTY_PROJECTS, fakeProjects, projectView } from './helpers/fake-yeschef.js'
+import { EMPTY_PROJECTS, fakeProjects, ONE_PROJECT, projectView } from './helpers/fake-yeschef.js'
 import type { ProjectsView } from '../src/shared/projects.js'
 import { BrowserSessionsContext } from '../src/renderer/browser-context.js'
 
@@ -100,4 +100,12 @@ it('在跑記號只畫在 busy 的項目，且在待批准前並存', () => {
   expect(mark.nextElementSibling?.className).toBe('project-pending')
   rerender(<ProjectBar projects={fakeProjects({ activeId: 'a', projects: [projectView('a')] }).projects} />)
   expect(container.querySelector('.project-busy')).toBeNull()
+})
+
+it('受管服務執行中時顯示專案狀態點', () => {
+  const { projects } = fakeProjects(ONE_PROJECT)
+  render(<ProjectBar projects={projects} projectRunStatuses={{ 'p-1': {
+    projectId: 'p-1', state: 'running', restarted: false, port: 5173,
+  } }} />)
+  expect(screen.getByRole('img', { name: '專案服務執行中' }).className).toContain('running')
 })

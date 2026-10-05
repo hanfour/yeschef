@@ -10,6 +10,9 @@
 .project-pending { color: var(--warning); font-size: var(--text-xs); }
 .project-browser { display: inline-flex; color: var(--info); }
 .project-browser .ui-icon { width: 12px; height: 12px; }
+.project-run-dot { width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--warning); }
+.project-run-dot.running { background: var(--success); }
+.project-run-dot.failed { background: var(--danger); }
 .project-unavailable { color: var(--danger); font-weight: 600; }
 .project-remove { padding: 0; width: 20px; height: 20px; min-height: 0; border: 0; color: var(--label-2); background: transparent; cursor: pointer; font-size: var(--text-l); flex: none; }
 .project-add { margin-left: auto; padding: 0; width: 28px; height: 28px; background: transparent; border-style: dashed; flex-shrink: 0; font-size: var(--text-xl); }
