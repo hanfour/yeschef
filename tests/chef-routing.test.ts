@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest'
-import { chooseModel, isModelUnavailableError, providerFailure, unavailableModelsFromTasks, UNSUPPORTED_MODEL_COOLDOWN_MS } from '../src/main/chef/routing.js'
+import { canDelegateUnit, chooseModel, MAX_TASK_UNITS, isModelUnavailableError, providerFailure, unavailableModelsFromTasks, UNSUPPORTED_MODEL_COOLDOWN_MS } from '../src/main/chef/routing.js'
 import type { ChefAttempt, ChefModel, ChefPolicy } from '../src/shared/chef.js'
 
 it('只有提供者／transport 故障可改派；拒絕、取消和一般工作失敗不改派', () => {
@@ -112,4 +112,16 @@ it('同分時依 model/list 的 catalog 順序選擇 Codex 模型', () => {
     { key: 'codex:gpt-5.5', provider: 'codex', model: 'gpt-5.5', label: 'GPT 5.5', description: '', recommended: true },
   ]
   expect(chooseModel(models, autoPolicy(models), 'code', noAttempts)?.key).toBe('codex:gpt-6-luna')
+})
+
+it('委派額度看剩餘執行次數，已完成的單元不佔額度', () => {
+  const unit = (status: 'done' | 'queued') => ({ id: Math.random().toString(), parentId: 'root', title: 't', kind: 'code' as const, goal: 'g', status })
+  const attempts = (n: number) => Array.from({ length: n }, () => ({}) as never)
+  const policy = { mode: 'auto' as const, allowed: ['claude:opus'], maxExecutions: 20, deadlineMinutes: 60 }
+  // 實際經營時的狀況：12 個單元都完成、用了 15 次，驗收要派修補。原本被「12 個單元」寫死擋下。
+  expect(canDelegateUnit({ units: Array.from({ length: 12 }, () => unit('done')), attempts: attempts(15), policy })).toBe(true)
+  // 剩 2 次：一個新單元加一次驗收剛好；已有一個排隊就不行。
+  expect(canDelegateUnit({ units: [unit('done')], attempts: attempts(18), policy })).toBe(true)
+  expect(canDelegateUnit({ units: [unit('queued')], attempts: attempts(18), policy })).toBe(false)
+  expect(canDelegateUnit({ units: Array.from({ length: MAX_TASK_UNITS }, () => unit('done')), attempts: attempts(0), policy })).toBe(false)
 })

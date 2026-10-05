@@ -1,4 +1,4 @@
-import type { ChefAttempt, ChefModel, ChefPolicy } from '../../shared/chef.js'
+import type { ChefAttempt, ChefModel, ChefPolicy, ChefTask } from '../../shared/chef.js'
 import type { Event } from '../../shared/events.js'
 import type { Provider } from '../../shared/projects.js'
 
@@ -58,6 +58,11 @@ export function chooseModel(models: readonly ChefModel[], policy: ChefPolicy, ki
     .map((model, index) => ({ model, index }))
     .sort((a, b) => score(b.model) - score(a.model) || a.index - b.index)[0]?.model
 }
+/** worker 每次最多跑的回合數由 ipc-bridge 設定；用完代表工作做到一半，不是失敗。 */
+export const MAX_TURN_LIMIT_CONTINUATIONS = 3
+export function isTurnLimitError(message: string): boolean {
+  return /maximum number of turns|max[_ ]?turns/i.test(message)
+}
 export function providerFailure(event: Extract<Event, { kind: 'session-end' }>): boolean {
   if (!event.isError) return false
   const message = event.errorMessage ?? ''
@@ -104,4 +109,17 @@ export function stoppedBackgroundId(event: ToolResultEvent, tool: ToolUseEvent |
   if (['TaskStop', 'KillShell', 'KillBash'].includes(tool.name)) return id
   if (!['TaskOutput', 'BashOutput'].includes(tool.name)) return undefined
   return /<status>\s*(?:completed|failed|killed|exited)\s*<\/status>|"status"\s*:\s*"(?:completed|failed|killed|exited)"/i.test(resultText(event.content)) ? id : undefined
+}
+
+/** 單元數的硬上限，只防規劃失控；實際成本由執行次數控制。 */
+export const MAX_TASK_UNITS = 40
+/**
+ * 還能不能再委派一個單元：排隊中的單元加上新的一個，再預留一次驗收，不能超過剩餘的執行次數。
+ * 已完成的單元不佔額度，所以驗收發現問題時仍能派修補。
+ */
+export function canDelegateUnit(task: Pick<ChefTask, 'units' | 'attempts' | 'policy'>): boolean {
+  if (task.units.length >= MAX_TASK_UNITS) return false
+  const remaining = task.policy.maxExecutions - task.attempts.length
+  const pending = task.units.filter(u => u.status === 'queued').length
+  return pending + 1 + 1 <= remaining
 }

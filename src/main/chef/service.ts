@@ -10,7 +10,7 @@ import type { Provider } from '../../shared/projects.js'
 import type { GroupMessageInput } from '../group/service.js'
 import { MSG as GROUP_MSG, labelFor, roleOf } from '../group/messages.js'
 import type { ModelCatalog } from './models.js'
-import { chooseModel, isModelUnavailableError, providerFailure, startedBackgroundId, stoppedBackgroundId, unavailableModelsFromTasks } from './routing.js'
+import { canDelegateUnit, chooseModel, isModelUnavailableError, isTurnLimitError, MAX_TURN_LIMIT_CONTINUATIONS, providerFailure, startedBackgroundId, stoppedBackgroundId, unavailableModelsFromTasks } from './routing.js'
 import { selectCodexReasoningEffort } from '../codex/reasoning-effort.js'
 import type { DeadlineReviewInput, DeadlineReviewer } from './deadline-reviewer.js'
 import { applyVerifiedUiCheck, prepareUiCheck, uiCheckPrompt, validateUiFindingResolution, verifyFixedUiFindings } from './ui-check/acceptance.js'
@@ -95,6 +95,10 @@ function trackBackground(attempt: ChefAttempt, event: Extract<Event, { kind: 'to
   attempt.backgroundShells = next
   attempt.backgroundWork = next.length > 0
 }
+const TURN_LIMIT_REASON = '用完單次回合上限'
+const PROGRESS_RECEIPT_ATTEMPTS = 6
+const PROGRESS_GOAL_MAX = 300
+
 export async function createChefService(deps: ChefDeps) {
   const now = deps.now ?? Date.now
   await mkdir(deps.dir, { recursive: true, mode: 0o700 })
@@ -313,7 +317,20 @@ export async function createChefService(deps: ChefDeps) {
           : '工具請求被拒絕；不會透過改派繞過決定。'
         blockUnit(task, attempt, unit, reason, false); await save(); return
       }
-      if (event.isError) {
+      if (event.isError && isTurnLimitError(event.errorMessage ?? '')) {
+        // 回合用完是工作做到一半：同一單元重新排隊，下一輪由 checkpoint 接續；超過接續次數才卡住，避免無限花費。
+        attempt.status = 'done'
+        const continuations = task.attempts.slice(unit.retryAfter ?? 0).filter(a => a.unitId === unit.id && a.reason.startsWith(TURN_LIMIT_REASON)).length
+        attempt.reason = `${TURN_LIMIT_REASON}（第 ${continuations + 1} 次），由下一輪接續。`
+        if (continuations >= MAX_TURN_LIMIT_CONTINUATIONS) {
+          unit.status = 'blocked'
+          const reason = `已連續 ${continuations + 1} 次用完回合上限仍未完成，請檢查工作範圍是否需要拆小`
+          groupWrite(task, 'blocked', GROUP_MSG.unitBlocked(labelFor(task, attempt), unit.title, reason), attempt, unit.id)
+          block(task, `${reason}；已保存進度，等待接續。`, false, true); await save(); return
+        }
+        unit.status = 'queued'; task.reason = `${TURN_LIMIT_REASON}，接續中`
+        await save()
+      } else if (event.isError) {
         attempt.status = 'failed'; attempt.reason = event.errorMessage ?? '執行者回報失敗'
         const modelUnavailable = isModelUnavailableError(event.apiErrorStatus, attempt.reason)
         if (modelUnavailable) attempt.failureKind = 'model-unavailable'
@@ -472,7 +489,7 @@ export async function createChefService(deps: ChefDeps) {
       if (unit.parentId !== null && unit.kind !== 'review') throw Error('工作者應直接完成已分配的工作，不能再次委派')
       const duplicate = task.units.find(u => u.parentId === unit.id && u.goal === parsed.data.goal && u.kind === parsed.data.kind)
       if (duplicate) return { unitId: duplicate.id, message: '此工作已排程；結束本回合後由主廚處理。' }
-      if (task.units.length >= Math.max(1, task.policy.maxExecutions - 1) || task.units.length >= 12) throw Error('已達工作單位上限，請整理現有結果')
+      if (!canDelegateUnit(task)) throw Error('剩餘執行次數不足以再委派工作（需保留一次驗收），請整理現有結果')
       const child = { ...parsed.data, id: randomUUID(), parentId: unit.id, status: 'queued' as const }
       task.units.push(child)
       groupWrite(task, 'delegated', GROUP_MSG.delegated(child.title, child.kind), undefined, child.id)
@@ -482,14 +499,20 @@ export async function createChefService(deps: ChefDeps) {
     async progress(id: string) {
       const owner = current(id); if (!owner) throw Error('找不到主廚任務')
       const recent = await (deps.group?.recent(owner.task.projectId, owner.task.id, GROUP_PROGRESS_LIMIT) ?? Promise.resolve([]))
-      return { taskId: owner.task.id, units: owner.task.units, attempts: owner.task.attempts.map(a => {
+      // 回傳要精簡：過長時 Claude Code 會把結果存成專案外的檔案，worker 讀它又要再過批准。
+      const receiptsFrom = owner.task.attempts.length - PROGRESS_RECEIPT_ATTEMPTS
+      return { taskId: owner.task.id, units: owner.task.units.map(u => ({ ...u, goal: clipped(u.goal, PROGRESS_GOAL_MAX) })), attempts: owner.task.attempts.map((a, index) => {
         const events = a.events as Event[]
-        const receipts = events.filter((e): e is Extract<Event, { kind: 'tool-result' }> => e.kind === 'tool-result' && events.some(tool => tool.kind === 'tool-use' && tool.id === e.id && !controlTool(tool.name))).slice(-3).map(result => {
+        const results = events.filter((e): e is Extract<Event, { kind: 'tool-result' }> => e.kind === 'tool-result' && events.some(tool => tool.kind === 'tool-use' && tool.id === e.id && !controlTool(tool.name)))
+        // 較早的執行只留最新一筆成功結果的簡短版：驗收回報必須引用每個實作／測試單元的工具，不能整批清空。
+        const older = index < receiptsFrom
+        const picked = older ? results.filter(result => !result.isError).slice(-1) : results.slice(-3)
+        const receipts = picked.map(result => {
           const tool = events.find((e): e is Extract<Event, { kind: 'tool-use' }> => e.kind === 'tool-use' && e.id === result.id)
-          return { toolUseId: result.id, name: tool?.name, input: clipped(tool?.input ?? '', 400), isError: result.isError, output: clipped(result.content, 800) }
+          return { toolUseId: result.id, name: tool?.name, input: clipped(tool?.input ?? '', older ? 160 : 400), isError: result.isError, output: clipped(result.content, older ? 200 : 800) }
         })
         return { workerId: a.workerId, unitId: a.unitId, provider: a.provider, model: a.actualModel ?? a.model, status: a.status, receipts }
-      }), note: '每位工作者列出最近三筆工具結果；更完整內容在工作者對話。',
+      }), note: `最近 ${PROGRESS_RECEIPT_ATTEMPTS} 次執行各列出最近三筆工具結果，更早的執行只列最新一筆成功結果（可供回報引用），單元目標只列前 ${PROGRESS_GOAL_MAX} 字；完整內容在工作者對話。`,
         groupMessages: recent.map(m => ({
           at: m.at, from: senderLabel(m.from), kind: m.kind, text: m.text.slice(0, GROUP_PROGRESS_TEXT_MAX),
           ...(m.from.kind === 'user' && (m.deliveredMentions?.length ?? 0) > 0

@@ -78,6 +78,35 @@ it('503 後先確認舊 worker 停止再改派，checkpoint 保留已完成工�
   expect(r.stopped).toEqual([first.id]); expect(r.started[1]?.provider).toBe('codex')
   expect(r.started[1]?.prompt).toContain('existing work'); expect(r.started[1]).not.toHaveProperty('resumeSessionId')
 })
+it('worker 用完回合上限時不卡住，同一單元帶著 checkpoint 接續', async () => {
+  const r = await rig(), first = await r.start()
+  r.service.observe(first.id, [{ kind: 'session-start', sessionId: 'turns', model: 'actual-c' }, { kind: 'tool-use', id: 'w', name: 'Write', input: { file_path: 'plan.md' } }, { kind: 'tool-result', id: 'w', isError: false, content: 'half of the plan written' }])
+  r.end(first.id, { isError: true, errorMessage: 'Reached maximum number of turns (64)' })
+  await vi.waitFor(() => expect(r.started).toHaveLength(2))
+  expect(r.started[1]?.prompt).toContain('half of the plan written')
+  const state = await r.service.handle({ action: 'get' })
+  if (state.kind !== 'state') throw new Error('state expected')
+  const task = state.state.tasks.at(-1)!
+  expect(task.status).toBe('running')
+  expect(task.attempts[0]?.status).toBe('done')
+  expect(task.attempts[0]?.reason).toContain('回合上限')
+})
+it('同一單元連續用完回合上限超過接續次數後才卡住', async () => {
+  const r = await rig()
+  await r.start()
+  for (let index = 0; index < 4; index += 1) {
+    await vi.waitFor(() => expect(r.started).toHaveLength(index + 1))
+    r.end(r.started[index]!.id, { isError: true, errorMessage: 'Reached maximum number of turns (64)' })
+  }
+  await vi.waitFor(async () => {
+    const state = await r.service.handle({ action: 'get' })
+    if (state.kind !== 'state') throw new Error('state expected')
+    expect(state.state.tasks.at(-1)?.status).toBe('blocked')
+  })
+  expect(r.started).toHaveLength(4)
+  const state = await r.service.handle({ action: 'get' })
+  if (state.kind === 'state') expect(state.state.tasks.at(-1)?.reason).toContain('回合上限')
+})
 it('error-intake 任務的群組里程碑不帶資料庫連線字串', async () => {
   const r = await rig()
   const secret = 'mysql://ei_project:never-show-this@db.test/errors'
@@ -440,6 +469,40 @@ it('主廚控制工具不能充作實作驗證，progress 只列真實工作結�
   const reviewer = r.started[2]!
   expect((await r.service.progress(reviewer.id)).attempts.find(a => a.workerId === worker.id)?.receipts).toEqual([])
   await expect(r.service.report(reviewer.id, { outcome: 'completed', summary: 'done', checks: [{ workerId: worker.id, toolUseId: 'progress' }] })).rejects.toThrow('控制工具')
+})
+it('progress 回傳保持精簡：單元目標截短，避免被存成專案外的檔案', async () => {
+  const r = await rig(), chief = await r.start()
+  const longGoal = '修改檔案並說明。'.repeat(700)
+  for (const title of ['一', '二', '三']) await r.service.delegate(chief.id, { title, kind: 'code', goal: `${title}：${longGoal}` })
+  r.end(chief.id)
+  for (let index = 1; index <= 3; index += 1) {
+    await vi.waitFor(() => expect(r.started).toHaveLength(index + 1))
+    const worker = r.started[index]!
+    r.service.observe(worker.id, [{ kind: 'tool-use', id: `b${index}`, name: 'Bash', input: { command: 'npm test' } }, { kind: 'tool-result', id: `b${index}`, isError: false, content: 'x'.repeat(20000) }])
+    r.end(worker.id)
+  }
+  await vi.waitFor(() => expect(r.started).toHaveLength(5))
+  const progress = await r.service.progress(r.started[4]!.id)
+  expect(progress.units.every(u => u.goal.length <= 400)).toBe(true)
+  expect(JSON.stringify(progress).length).toBeLessThan(20000)
+})
+it('較早的實作單元在 progress 仍有可引用的工具結果，驗收能以它回報完成', async () => {
+  const r = await rig({ maxExecutions: 20 }), chief = await r.start()
+  for (const title of ['一', '二', '三', '四', '五', '六', '七']) await r.service.delegate(chief.id, { title, kind: 'code', goal: `完成第${title}項` })
+  r.end(chief.id)
+  for (let index = 1; index <= 7; index += 1) {
+    await vi.waitFor(() => expect(r.started).toHaveLength(index + 1))
+    const worker = r.started[index]!
+    r.service.observe(worker.id, [{ kind: 'tool-use', id: `edit${index}`, name: 'Edit', input: { file_path: `f${index}` } }, { kind: 'tool-result', id: `edit${index}`, isError: false, content: `edited ${index}` }])
+    r.end(worker.id)
+  }
+  await vi.waitFor(() => expect(r.started).toHaveLength(9))
+  const reviewer = r.started[8]!
+  const progress = await r.service.progress(reviewer.id)
+  // 實際經營時：13 次執行時前面單元的 receipts 被清空，驗收者無從引用，任務無法登錄完成。
+  const checks = progress.attempts.filter(a => a.receipts.length > 0 && a.workerId !== chief.id && a.workerId !== reviewer.id).map(a => ({ workerId: a.workerId, toolUseId: a.receipts.at(-1)!.toolUseId }))
+  expect(checks).toHaveLength(7)
+  await expect(r.service.report(reviewer.id, { outcome: 'completed', summary: 'done', checks })).resolves.toMatchObject({ recorded: true })
 })
 it('say_to_group 不能充作實作驗證', async () => {
   const r = await rig(), chief = await r.start()
