@@ -202,14 +202,14 @@ export function App({ slot }: { readonly slot?: ReactNode } = {}) {
                   panelGroup.current?.hideNow()
                   setSkillsOpen(true)
                 }}><Icon name="skills" />Skills</button>
-                <button type="button" className="panel-toggle" onClick={() => { panelGroup.current?.hideNow(); setSelectedTaskId(undefined); setChefOpen(true) }}>主廚</button>
-                <button type="button" className="panel-toggle" title={permissionState?.paused ? '自動批准已暫停' : `授權模式：${permissionState?.policies.find(p => p.projectId === projects.active?.id)?.mode ?? 'manual'}`} onClick={() => { panelGroup.current?.hideNow(); setPermissionsOpen(true) }}>授權{permissionState && !permissionState.paused && permissionState.policies.some(p => p.projectId === projects.active?.id && p.mode !== 'manual') ? ' ●' : ''}</button>
-                <button type="button" className="panel-toggle" onClick={() => { panelGroup.current?.hideNow(); setTestMachinesOpen(true) }} disabled={projects.active === undefined}>測試機</button>
+                <button type="button" className="panel-toggle" onClick={() => { panelGroup.current?.hideNow(); setSelectedTaskId(undefined); setChefOpen(true) }}><Icon name="chef" />主廚</button>
+                <button type="button" className="panel-toggle" title={permissionState?.paused ? '自動批准已暫停' : `授權模式：${permissionState?.policies.find(p => p.projectId === projects.active?.id)?.mode ?? 'manual'}`} onClick={() => { panelGroup.current?.hideNow(); setPermissionsOpen(true) }}><Icon name="shield" />授權{permissionState && !permissionState.paused && permissionState.policies.some(p => p.projectId === projects.active?.id && p.mode !== 'manual') ? ' ●' : ''}</button>
+                <button type="button" className="panel-toggle" onClick={() => { panelGroup.current?.hideNow(); setTestMachinesOpen(true) }} disabled={projects.active === undefined}><Icon name="monitor" />測試機</button>
                 <button type="button" className="panel-toggle" onClick={() => {
                   panelGroup.current?.hideNow()
                   setProjectRunAutoStart(true)
                   setProjectRunOpen(true)
-                }} disabled={projects.active === undefined}>執行</button>
+                }} disabled={projects.active === undefined}><Icon name="play" />執行</button>
                 <button type="button" className="panel-toggle error-intake-trigger" aria-label="錯誤收集" title="錯誤收集資料庫" onClick={() => { panelGroup.current?.hideNow(); setErrorIntakeOpen(true) }}>
                   <Icon name="database" /><span>錯誤收集</span>
                 </button>

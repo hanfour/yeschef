@@ -16,6 +16,10 @@ const paths = {
   forward: <path d="M9 5l7 7-7 7" />,
   reload: <><path d="M20 12a8 8 0 1 1-2.3-5.7" /><path d="M20 4v5h-5" /></>,
   stop: <path d="M6 6l12 12M18 6L6 18" />,
+  chef: <><path d="M7 14a4 4 0 1 1 1.6-7.7 4 4 0 0 1 6.8 0A4 4 0 1 1 17 14v6H7v-6Z" /><path d="M7 17h10" /></>,
+  shield: <><path d="M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6l-7-3Z" /><path d="m9 12 2 2 4-4" /></>,
+  monitor: <><rect x="3" y="4" width="18" height="12" rx="2" /><path d="M8 20h8M12 16v4" /></>,
+  play: <path d="M8 5v14l11-7L8 5Z" />,
 } satisfies Record<string, ReactNode>
 export function Icon({ name }: { name: keyof typeof paths }) {
   return <svg className="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>
