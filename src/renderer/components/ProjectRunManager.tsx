@@ -35,7 +35,7 @@ function initialDraft(candidate?: ProjectRunCandidate): Draft {
   const frontend = /vite|next|astro|webpack/i.test(`${candidate?.command ?? ''} ${candidate?.source ?? ''}`)
   return {
     command: candidate?.command ?? '', cwd: candidate?.cwd ?? '.', port: candidate?.port === null || candidate === undefined ? '' : String(candidate.port),
-    url: 'http://127.0.0.1:{port}/', readyPath: '/', envText: '', portStrategy: 'fixed',
+    url: 'http://127.0.0.1:{port}/', readyPath: '/', envText: '', portStrategy: candidate?.portStrategy ?? 'fixed',
     watchEnabled: candidate?.watchEnabled ?? !frontend, includeText: candidate?.source.startsWith('Python ') ? '**/*.py' : '**/*',
     excludeText: DEFAULT_EXCLUDES.join('\n'), openInBrowser: true,
   }

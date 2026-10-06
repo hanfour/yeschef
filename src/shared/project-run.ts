@@ -8,6 +8,7 @@ export const ProjectRunCandidateSchema = z.object({
   port: z.number().int().min(1).max(65535).nullable(),
   source: z.string().min(1),
   watchEnabled: z.boolean().optional(),
+  portStrategy: z.enum(['fixed', 'placeholder']).optional(),
 }).strict()
 export type ProjectRunCandidate = z.infer<typeof ProjectRunCandidateSchema>
 

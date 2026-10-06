@@ -6,6 +6,8 @@ export interface ProjectRunDetectInput {
   readonly procfile?: string
   readonly readme?: string
   readonly pythonFiles?: readonly string[]
+  /** 入口檔內容（檔名 → 文字），用來讀出連接埠參數。 */
+  readonly pythonSources?: Readonly<Record<string, string>>
   readonly hasDotVenv?: boolean
   readonly hasVenv?: boolean
 }
@@ -76,16 +78,37 @@ function packageCandidates(input: ProjectRunDetectInput): ProjectRunCandidate[] 
   })
 }
 
+const PYTHON_DEFAULT_PORT = 8000
+
+function validPort(text: string | undefined): number | null {
+  const port = Number(text)
+  return Number.isInteger(port) && port >= 1 && port <= 65535 ? port : null
+}
+
+/** argparse 有 --port 時改成可替換連接埠；只有寫死的 port= 時用固定連接埠。 */
+function pythonPort(source: string | undefined): Pick<ProjectRunCandidate, 'port' | 'portStrategy'> & { readonly portArg: boolean } {
+  if (source === undefined) return { port: null, portArg: false }
+  const argument = /add_argument\(([^)]*['"]--port['"][^)]*)\)/.exec(source)
+  if (argument !== null) {
+    const port = validPort(/default\s*=\s*(\d{1,5})/.exec(argument[1]!)?.[1]) ?? PYTHON_DEFAULT_PORT
+    return { port, portStrategy: 'placeholder', portArg: true }
+  }
+  return { port: validPort(/\bport\s*=\s*(\d{1,5})\b/.exec(source)?.[1]), portArg: false }
+}
+
 function pythonCandidates(input: ProjectRunDetectInput): ProjectRunCandidate[] {
   const interpreter = input.hasDotVenv ? '.venv/bin/python' : input.hasVenv ? 'venv/bin/python' : 'python3'
   const names = ['manage.py', 'app.py', 'server.py', 'main.py']
-  return names.filter(name => input.pythonFiles?.includes(name)).map(name => ({
-    command: `${interpreter} ${name}`,
-    cwd: '.',
-    port: null,
-    source: `Python ${name}`,
-    watchEnabled: true,
-  }))
+  return names.filter(name => input.pythonFiles?.includes(name)).map(name => {
+    const { portArg, ...port } = pythonPort(input.pythonSources?.[name])
+    return {
+      command: `${interpreter} ${name}${portArg ? ' --port {port}' : ''}`,
+      cwd: '.',
+      ...port,
+      source: `Python ${name}`,
+      watchEnabled: true,
+    }
+  })
 }
 
 function procfileCandidate(text: string | undefined): ProjectRunCandidate[] {
@@ -109,7 +132,8 @@ function readmeCandidates(text: string | undefined): ProjectRunCandidate[] {
   for (const match of text.matchAll(/```[^\n]*\n([\s\S]*?)```/g)) {
     const block = match[1] ?? ''
     const command = block.split(/\r?\n/).map(line => line.trim())
-      .find(line => line !== '' && !line.startsWith('#') && !/^(?:https?:\/\/)?(?:localhost|127\.0\.0\.1):\d+/i.test(line))
+      .find(line => line !== '' && !line.startsWith('#') && !/^cd(?:\s|$)/.test(line)
+        && !/^(?:https?:\/\/)?(?:localhost|127\.0\.0\.1):\d+/i.test(line))
     if (command === undefined) continue
     result.push({
       command, cwd: '.', port: localPort(block) ?? portFor(command),

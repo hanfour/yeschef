@@ -1,6 +1,6 @@
 .project-run-dialog { width: min(820px, calc(100vw - 32px)); max-height: min(760px, calc(100vh - 32px)); }
 .project-run-dialog .skills-heading h1 { letter-spacing: 0; }
-.project-run-settings, .project-run-panel { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.project-run-settings, .project-run-panel { display: flex; flex-direction: column; gap: 12px; min-height: 0; padding: 20px 28px 24px; }
 .project-run-settings label { display: flex; flex-direction: column; gap: 4px; color: var(--label-2); font-size: var(--text-s); }
 .project-run-settings textarea { resize: vertical; font-family: var(--font-mono); font-size: var(--text-s); }
 .project-run-settings .project-run-check { flex-direction: row; align-items: center; gap: 8px; color: var(--label); }
@@ -21,7 +21,8 @@
 .project-run-log-heading h2 { margin: 0; color: var(--label-2); font-size: var(--text-s); font-weight: 600; }
 .project-run-log { min-height: 120px; max-height: 270px; overflow: auto; margin: 0; padding: 10px; border-radius: var(--radius-s); background: var(--bg-raised); color: var(--label); font-size: var(--text-xs); line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
 @media (max-width: 600px) {
-  .project-run-dialog { width: calc(100vw - 20px); max-height: calc(100vh - 20px); padding: 12px; }
+  .project-run-dialog { width: calc(100vw - 20px); max-height: calc(100vh - 20px); }
+  .project-run-settings, .project-run-panel { padding: 16px 20px 20px; }
   .project-run-fields { grid-template-columns: minmax(0, 1fr); }
   .project-run-log-heading { align-items: flex-start; flex-direction: column; }
 }

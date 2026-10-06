@@ -454,7 +454,10 @@ export async function createWindow(): Promise<BaseWindow> {
     projectName: projectId => findProject(service.state(), projectId)?.name,
     configStore: projectRunConfigStore,
     runner: projectRunRunner,
-    discover: discoverProjectRunCandidates,
+    discover: root => discoverProjectRunCandidates(root, {
+      isFree: async port => (await projectRunFiles.inspectPort(port)).kind === 'free',
+      findFreePort: projectRunFiles.findFreePort,
+    }),
     readLog: projectRunFiles.readLog,
     logPath: projectRunFiles.logPath,
     openInBrowser: async projectId => {

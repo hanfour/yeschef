@@ -55,6 +55,29 @@ describe('detectProjectRunCandidates', () => {
     expect(detectProjectRunCandidates({ pythonFiles: ['main.py'] })[0]?.command).toBe('python3 main.py')
   })
 
+  it('Python 入口有 argparse --port 時帶出可替換連接埠與預設埠', () => {
+    const source = "parser.add_argument('--host', default='127.0.0.1')\nparser.add_argument('--port', type=int, default=6062)\n"
+    expect(detectProjectRunCandidates({ pythonFiles: ['server.py'], hasDotVenv: true, pythonSources: { 'server.py': source } })[0]).toMatchObject({
+      command: '.venv/bin/python server.py --port {port}', port: 6062, portStrategy: 'placeholder', source: 'Python server.py',
+    })
+    const noDefault = 'parser.add_argument("-p", "--port", type=int)\n'
+    expect(detectProjectRunCandidates({ pythonFiles: ['app.py'], pythonSources: { 'app.py': noDefault } })[0]).toMatchObject({
+      command: 'python3 app.py --port {port}', port: 8000, portStrategy: 'placeholder',
+    })
+  })
+
+  it('Python 入口寫死 port= 時帶出固定連接埠', () => {
+    expect(detectProjectRunCandidates({ pythonFiles: ['app.py'], pythonSources: { 'app.py': 'app.run(host="0.0.0.0", port=5050)\n' } })[0]).toMatchObject({
+      command: 'python3 app.py', port: 5050,
+    })
+  })
+
+  it('README 區塊略過 cd 這類切換目錄的行', () => {
+    expect(detectProjectRunCandidates({ readme: '```sh\ncd ~/work/demo\nnpm run dev\n```' })).toEqual([
+      expect.objectContaining({ command: 'npm run dev' }),
+    ])
+  })
+
   it('使用 Procfile 的 web 指令', () => {
     expect(detectProjectRunCandidates({ procfile: 'worker: celery -A app worker\nweb: PORT=4100 python app.py' })).toEqual([
       expect.objectContaining({ command: 'PORT=4100 python app.py', port: 4100, source: 'Procfile web' }),
