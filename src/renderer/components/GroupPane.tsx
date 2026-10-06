@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { useStickToBottom } from '../hooks/useStickToBottom.js'
 import type React from 'react'
 import { onErrorIntakeChanged } from '../error-intake-events.js'
 import type { YesChefApi } from '../../shared/ipc.js'
@@ -27,7 +28,6 @@ export const GROUP_UI_TEXT = {
 } as const
 export const GROUP_EMPTY_HINT = GROUP_UI_TEXT.emptyHint
 
-const STICK_THRESHOLD_PX = 40
 
 function senderKey(from: GroupMessage['from']): string {
   return from.kind === 'agent' ? from.provider : from.kind
@@ -90,28 +90,22 @@ interface GroupStreamProps {
 }
 
 function GroupStream({ messages, selected, loaded, now, onJump }: GroupStreamProps): React.ReactElement {
-  const listRef = useRef<HTMLDivElement | null>(null)
-  const stick = useRef(true)
   const visible = useMemo(
     () => (selected === ALL_THREADS ? messages : messages.filter((message) => message.threadId === selected)),
     [messages, selected]
   )
-  useLayoutEffect(() => {
-    const element = listRef.current
-    if (element === null || !stick.current) return
-    element.scrollTop = element.scrollHeight
-  }, [visible])
-  const onScroll = (): void => {
-    const element = listRef.current
-    if (element === null) return
-    stick.current = element.scrollHeight - element.scrollTop - element.clientHeight <= STICK_THRESHOLD_PX
-  }
+  const { listRef, contentRef, away, onScroll, jumpToLatest } = useStickToBottom(visible)
   return (
-    <div className="group-stream" ref={listRef} onScroll={onScroll}>
-      {loaded && visible.length === 0 ? <p className="group-empty">{GROUP_UI_TEXT.emptyHint}</p> : null}
-      {visible.map((message) => (
-        <MessageRow key={message.id} message={message} now={now()} onJump={onJump} />
-      ))}
+    <div className="group-stream-shell">
+      <div className="group-stream" ref={listRef} onScroll={onScroll}>
+        <div className="group-stream-content" ref={contentRef}>
+          {loaded && visible.length === 0 ? <p className="group-empty">{GROUP_UI_TEXT.emptyHint}</p> : null}
+          {visible.map((message) => (
+            <MessageRow key={message.id} message={message} now={now()} onJump={onJump} />
+          ))}
+        </div>
+      </div>
+      {away ? <button type="button" className="conversation-latest" onClick={jumpToLatest}>↓ 回到最新訊息</button> : null}
     </div>
   )
 }

@@ -5,7 +5,9 @@
 .group-thread-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .group-thread.is-on { background: var(--accent-soft); border-color: var(--accent); color: var(--label); }
 
-.group-stream { flex: 1; min-height: 0; overflow-y: auto; padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; }
+.group-stream-shell { position: relative; display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.group-stream { flex: 1; min-height: 0; overflow-y: auto; padding: 8px 12px; }
+.group-stream-content { display: flex; flex-direction: column; gap: 6px; }
 .group-empty { color: var(--label-3); font-size: var(--text-s); text-align: center; margin: 24px 0; }
 
 .group-message { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; align-items: baseline; gap: 8px; padding: 6px 8px; border-radius: var(--radius-m); font-size: var(--text-m); color: var(--label); }
